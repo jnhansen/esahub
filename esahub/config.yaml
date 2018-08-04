@@ -1,0 +1,152 @@
+# -------------------------------------------------------------------------------------------- #
+# GENERAL SYSTEM CONFIGURATION
+# -------------------------------------------------------------------------------------------- #
+GENERAL:
+  # -------------------------------------------------------------------------------------------- #
+  # The directory that holds extracted meta data.
+  DATA_DIR: '~/esahub/data/'
+  # Logging disabled by default. Can be switched on
+  # with command line --log.
+  LOGGING: No
+  # Options include {cmd}, {time}
+  LOG_FILE: '~/esahub/logs/esahub_{cmd}_{time}.log'
+  # Whether to send email reports. Best leave at False and
+  # override with command line --email
+  SEND_EMAIL: No
+  EMAIL_SUBJECT: 'esahub report [{cmd}]'
+  EMAIL_SENDER: ''
+  EMAIL_REPORT_RECIPIENTS:
+      -
+
+  # -------------------------------------------------------------------------------------------- #
+  # Whether to use a curses GUI (experimental)
+  USE_GUI: No
+  # Whether to suppress terminal output
+  QUIET: No
+  # Whether to download preview images if available
+  DOWNLOAD_PREVIEW: No
+  # Whether to check the consistency of existing files
+  # conflicting with the current download
+  CHECK_EXISTING: Yes
+  # Default mode for consistency checking: `md5`|`file`
+  # `file` is very fast but doesn't guarantee consistency
+  # `md5` is slower and only works when the file (still) exists on SciHub
+  CHECK_MODE: 'md5'
+
+  # -------------------------------------------------------------------------------------------- #
+  # Number of reconnection trials
+  TRIALS: 10
+  # Connection timeout in seconds
+  TIMEOUT: 5.0
+  # Waiting time in seconds before trying to reconnect
+  RECONNECT_TIME: 2.0
+  # Whether to wait indefinitely when encountering HTTP 503:
+  WAIT_ON_503: Yes
+  # Number of entries fetched from the server per request
+  ENTRIES: 100
+  # Number of simultaneous queries to SciHub (ls command)
+  N_SCIHUB_QUERIES: 50
+  # Default number of simultaneous downloads
+  N_DOWNLOADS: 2
+
+  # -------------------------------------------------------------------------------------------- #
+  # Specify default query parameters here.
+  QUERY: {}
+  DEFAULT_SERVER: 'DHUS'
+
+
+# -------------------------------------------------------------------------------------------- #
+# SATELLITE CONFIGURATION
+# -------------------------------------------------------------------------------------------- #
+SATELLITES:
+  S1A:
+    source: ['COLHUB2','COLHUB1','DHUS']
+    platform: 'Sentinel-1'
+    suffix: '.SAFE'
+    ext: '.zip'
+    meta: 'S1'
+    bucket: 'evdcsen1'
+  S1B:
+    source: ['COLHUB2','COLHUB1','DHUS']
+    platform: 'Sentinel-1'
+    suffix: '.SAFE'
+    ext: '.zip'
+    meta: 'S1'
+    bucket: 'evdcsen1'
+  S2A:
+    source: ['COLHUB2','COLHUB1','DHUS']
+    platform: 'Sentinel-2'
+    suffix: '.SAFE'
+    ext: '.zip'
+    meta: 'S2'
+    bucket: 'evdcsen2'
+  S2B:
+    source: ['COLHUB2','COLHUB1','DHUS']
+    platform: 'Sentinel-2'
+    suffix: '.SAFE'
+    ext: '.zip'
+    meta: 'S2'
+    bucket: 'evdcsen2'
+  S3A:
+    source: ['COLHUB2','COLHUB1','S3']
+    platform: 'Sentinel-3'
+    suffix: '.SEN3'
+    ext: '.zip'
+    meta: 'S3'
+    bucket: 'evdcsen3'
+  S5P:
+    source:
+    platform: 'Sentinel-5'
+    suffix: ''
+    ext: '.nc'
+    meta: 'S5'
+    bucket: 'evdcsen5'
+  AE:
+    source:
+    platform: 'ADM-AEOLUS'
+    suffix: ''
+    ext: '.tgz'
+    meta: 'AEOLUS'
+    bucket: 'evdcaeolus'
+
+
+# -------------------------------------------------------------------------------------------- #
+# DATA HOSTS CONFIGURATION
+# -------------------------------------------------------------------------------------------- #
+SERVERS:
+  S3:
+    host: 'https://scihub.copernicus.eu/s3'
+    user: ''
+    password: ''
+  S2B:
+    host: 'https://scihub.copernicus.eu/s2b'
+    user: ''
+    password: ''
+  DHUS:
+    host: 'https://scihub.copernicus.eu/dhus'
+    user: ''
+    password: ''
+  TMP:
+    host: 'https://tmphub.copernicus.eu/dhus'
+    user: ''
+    password: ''
+  COLHUB1:
+    host: 'https://colhub.copernicus.eu/dhus'
+    user: ''
+    password: ''
+  COLHUB2:
+    host: 'https://colhub2.copernicus.eu/dhus'
+    user: ''
+    password: ''
+
+
+# -------------------------------------------------------------------------------------------- #
+# CUSTOM LOCATION ALIASES
+# -------------------------------------------------------------------------------------------- #
+LOCATIONS:
+  Ireland                   : 'POLYGON((-25.1 46.8,-5.25 46.8,-5.25 57.4,-25.1 57.4,-25.1 46.8))'
+  Ireland_large             : 'POLYGON((-33.0 27.0,3.0 27.0,3.0 63.0,-33.0 63.0,-33.0 27.0))'
+  Namibia_Gobabeb           : 'POINT(15.0 -23.0)'
+  France_La_Crau            : 'POINT(4.0 43.0)'
+  Italy_Rome_Tor_Vergata    : 'POINT(12.0 41.0)'
+  Ireland_Mace_Head         : 'POINT(-9.0 53.0)'
