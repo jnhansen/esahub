@@ -48,7 +48,7 @@ setuptools.setup(
         'netCDF4',
         'python-dateutil',
         'pytz',
-        # 's3cmd',
+        'tqdm'
     ],
     setup_requires=['nose'],
     entry_points={
