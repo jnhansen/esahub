@@ -4,17 +4,13 @@
     or check whether the archive is a valid zip file.
 """
 from __future__ import print_function
-from . import scihub, checksum
-from . import tty
+from . import scihub, checksum, tty
 from .config import CONFIG
-
 import zipfile
 from netCDF4 import Dataset
 import os
 import sys
-# import traceback
 import logging
-# import subprocess
 
 logger = logging.getLogger('esahub')
 PY2 = sys.version_info < (3, 0)
@@ -75,7 +71,7 @@ def check_file(full_file_path, mode):
             try:
                 zip_ref = zipfile.ZipFile(full_file_path, 'r')
                 zip_ref.close()
-            except:
+            except zipfile.BadZipFile as e:
                 message = '{} {}'.format(tty.error('BAD ZIP FILE:'),
                                          full_file_path)
                 healthy = False
@@ -86,7 +82,7 @@ def check_file(full_file_path, mode):
             try:
                 nc_ref = Dataset(full_file_path, 'r')
                 nc_ref.close()
-            except:
+            except OSError as e:
                 message = '{} {}'.format(tty.error('BAD NETCDF FILE:'),
                                          full_file_path)
                 healthy = False
@@ -139,5 +135,6 @@ def _register_bad_file(status):
         BAD_FILE_COUNTER += 1
         BAD_FILES.append(file_path)
 
-    tty.update(os.path.split(file_path)[1], message)
+    tty.update(os.path.split(file_path)[1],
+               {'msg': message})
     logging.info(message)
