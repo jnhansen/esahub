@@ -2,14 +2,12 @@ import unittest
 import contextlib
 import logging
 import re
-# import json
 import datetime as DT
 import pytz
 import os
 import sys
 import shutil
 import subprocess
-# from netCDF4 import Dataset
 from esahub.tests import config as test_config
 from esahub import config
 from esahub import geo, helpers, scihub, checksum, check, main
@@ -17,11 +15,7 @@ from esahub import geo, helpers, scihub, checksum, check, main
 logger = logging.getLogger('esahub')
 
 PY2 = sys.version_info < (3, 0)
-# if PY2:
-#     from urllib2 import HTTPError
-# else:
-#     from urllib.error import HTTPError
-
+SMALL_SIZE_QUERY = 'size: ???.* KB'
 
 if hasattr(unittest.TestCase, 'subTest'):
     class TestCase(unittest.TestCase):
@@ -174,7 +168,7 @@ class ScihubTestCase(TestCase):
                 self.assertEqual(response.code, 200)
 
     def test_md5_from_file(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the md5 sum computed from the local file is equal
@@ -189,10 +183,7 @@ class ScihubTestCase(TestCase):
                     self.fail('Remote MD5 could not be obtained: {}'.format(e))
 
     def test_exists_true(self):
-        existing = []
-        for sat, satconf in config.CONFIG['SATELLITES'].items():
-            if satconf['source'] is not None:
-                existing.extend(scihub.search({'satellite': sat}, limit=1))
+        existing = scihub.search({}, limit=1)
         for e in existing:
             with self.subTest(product=e['filename']):
                 self.assertTrue(scihub.exists(e['filename']))
@@ -287,19 +278,19 @@ class ScihubSearchTestCase(TestCase):
     # SciHub's `intersects` parameter does not work reliably.
     #
     def test_spatial_queries(self):
-        for loc, ref_coords in config.CONFIG['LOCATIONS'].items():
-            with self.subTest(location=loc):
-                file_list = scihub.search(
-                    {'location': [loc], 'to_time': '2017-09-01T00:00:00Z'},
-                    server='S3', limit=20)
-                for f in file_list:
-                    with self.subTest(product=f['filename']):
-                        #
-                        # Assert that the products indeed intersect the
-                        # requested location.
-                        #
-                        self.assertTrue(geo.intersect(f['coords'], ref_coords,
-                                                      tolerance=0.1))
+        loc, ref_coords = next(iter(config.CONFIG['LOCATIONS'].items()))
+        with self.subTest(location=loc):
+            file_list = scihub.search(
+                {'location': [loc], 'to_time': '2017-09-01T00:00:00Z'},
+                server='S3', limit=20)
+            for f in file_list:
+                with self.subTest(product=f['filename']):
+                    #
+                    # Assert that the products indeed intersect the
+                    # requested location.
+                    #
+                    self.assertTrue(geo.intersect(f['coords'], ref_coords,
+                                                  tolerance=0.1))
 
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-1'}
@@ -335,40 +326,25 @@ class ScihubDownloadTestCase(TestCase):
         test_config.clear_test_data()
 
     def test_download(self):
-        for sat, satconf in config.CONFIG['SATELLITES'].items():
-            if satconf['source'] is not None:
-                with self.subTest(satellite=sat):
-                    file_list = scihub.search(
-                        {'satellite': sat, 'query': 'size:?.* MB'}, limit=1)
-                    # q = scihub_connect.Query(
-                    #     {'satellite': sat, 'query': 'size:?.* MB'})
-                    # file_list = q.get_file_list(limit=1)
-                    for f in file_list:
-                        with self.subTest(url=f['url']):
-                            result = scihub.download(f)
-                            #
-                            # Assert that the download didn't fail and that
-                            # the returned file path exists.
-                            #
-                            self.assertNotEqual(result, False)
-                            self.assertTrue(os.path.isfile(result))
+        file_list = scihub.search({'query': SMALL_SIZE_QUERY}, limit=1)
+        for f in file_list:
+            with self.subTest(url=f['url']):
+                result = scihub.download(f)
+                #
+                # Assert that the download didn't fail and that
+                # the returned file path exists.
+                #
+                self.assertNotEqual(result, False)
+                self.assertTrue(os.path.isfile(result))
 
     def test_download_many(self):
-        file_list = []
-        for sat, satconf in config.CONFIG['SATELLITES'].items():
-            if satconf['source'] is not None:
-                file_list.extend(
-                    scihub.search({'satellite': sat, 'query': 'size:?.* MB'},
-                                  limit=1)
-                )
-                # q = scihub_connect.Query(
-                #     {'satellite': sat, 'query': 'size:?.* MB'})
-                # file_list.extend(q.get_file_list(limit=1))
+        file_list = scihub.search({'query': SMALL_SIZE_QUERY},
+                                  limit=2)
         scihub.download_many(file_list)
         #
         # Assert that all downloads were successful.
         #
-        local_files = helpers.ls(config.CONFIG['GENERAL']['TMP_DIR'])
+        local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         local_files_identifiers = [os.path.splitext(os.path.split(_)[1])[0]
                                    for _ in local_files]
         for f in file_list:
@@ -380,9 +356,9 @@ class ScihubDownloadTestCase(TestCase):
 
     def test_redownload(self):
         test_config.copy_corrupt_data()
-        local_files = helpers.ls(config.CONFIG['GENERAL']['TMP_DIR'])
+        local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         scihub.redownload(local_files)
-        new_local_files = helpers.ls(config.CONFIG['GENERAL']['TMP_DIR'])
+        new_local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         self.assertEqual(set(local_files), set(new_local_files))
         for f in local_files:
             with self.subTest(file=f):
@@ -406,7 +382,7 @@ class CheckTestCase(TestCase):
         test_config.clear_test_data()
 
     def test_check_file_md5_healthy(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files check out in `md5` mode.
@@ -419,7 +395,7 @@ class CheckTestCase(TestCase):
                     self.fail('File check failed: {}'.format(e))
 
     def test_check_file_zip_healthy(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files check out in `file` mode.
@@ -434,7 +410,7 @@ class CheckTestCase(TestCase):
     def test_check_file_md5_corrupt(self):
         test_config.clear_test_data()
         test_config.copy_corrupt_data()
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files are detected as corrupt in `md5` mode.
@@ -449,7 +425,7 @@ class CheckTestCase(TestCase):
     def test_check_file_zip_corrupt(self):
         test_config.clear_test_data()
         test_config.copy_corrupt_data()
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files are detected as corrupt in `file` mode.
@@ -478,7 +454,7 @@ class ChecksumTestCase(TestCase):
         test_config.clear_test_data()
 
     def test_md5(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the md5 checksum returned by checksum.md5() is
@@ -497,13 +473,13 @@ class ChecksumTestCase(TestCase):
                 )
 
     def test_etag_small_files(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['TMP_DIR']):
+        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the computed etag is equal to the md5
                 # checksum for files smaller than the chunksize.
                 #
-                size_mb = int(os.path.getsize(f) / 1024**2)
+                size_mb = max(10, int(os.path.getsize(f) / 1024**2))
                 self.assertEqual(
                     checksum.md5(f), checksum.etag(f, chunksize=2 * size_mb)
                 )
@@ -534,23 +510,24 @@ class MainTestCase(TestCase):
         test_config.clear_all()
 
     def test_ls(self):
-        q = {'time': 'today', 'satellite': 'S3A', 'location': ['Ireland']}
+        q = {'time': 'today', 'satellite': 'S3A',
+             'location': ['Ireland_Mace_Head']}
         files = scihub.search(q)
         result = main.ls(q)
         self.assertEqual(len(result), len(files))
 
     def test_get(self):
         test_config.clear_test_data()
-        q = {'satellite': 'S3A', 'query': 'size:?.*MB'}
-        files = scihub.search(q, limit=3)
-        main.get(q, limit=3)
+        q = {'satellite': 'S3A', 'query': SMALL_SIZE_QUERY}
+        files = scihub.search(q, limit=2)
+        main.get(q, limit=2)
 
         for f in files:
             ext = '.zip'
             with self.subTest(product=f['filename']):
                 self.assertTrue(
                     os.path.isfile(os.path.join(
-                        config.CONFIG['GENERAL']['TMP_DIR'],
+                        config.CONFIG['GENERAL']['DATA_DIR'],
                         f['filename']) + ext)
                 )
 
@@ -586,14 +563,14 @@ class MainTestCase(TestCase):
         #
         for f in corrupt_files:
             self.assertFalse(os.path.isfile(os.path.join(
-                    config.CONFIG['GENERAL']['TMP_DIR'], f)))
+                    config.CONFIG['GENERAL']['DATA_DIR'], f)))
 
         #
         # Assert that the healthy files have not been deleted.
         #
         for f in healthy_files:
             self.assertTrue(os.path.isfile(os.path.join(
-                    config.CONFIG['GENERAL']['TMP_DIR'], f)))
+                    config.CONFIG['GENERAL']['DATA_DIR'], f)))
 
     def test_doctor_repair(self):
         test_config.copy_corrupt_data()
@@ -604,7 +581,7 @@ class MainTestCase(TestCase):
         main.doctor(repair=True)
 
         for f in corrupt_files:
-            repaired_f = os.path.join(config.CONFIG['GENERAL']['TMP_DIR'], f)
+            repaired_f = os.path.join(config.CONFIG['GENERAL']['DATA_DIR'], f)
             with self.subTest(file=repaired_f):
                 #
                 # Assert that each corrupt file has been repaired.
