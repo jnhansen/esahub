@@ -104,15 +104,21 @@ class ScihubTestCase(TestCase):
     def test__auto_detect_server_from_query(self):
         queries = [
             # (query, server)
-            ({'mission': 'Sentinel-1'}, ['COLHUB2', 'COLHUB1', 'DHUS']),
-            ({'mission': 'Sentinel-2'}, ['COLHUB2', 'COLHUB1', 'DHUS']),
-            ({'mission': 'Sentinel-3'}, ['COLHUB2', 'COLHUB1', 'S3']),
-            ({'satellite': 'S1A'}, ['COLHUB2', 'COLHUB1', 'DHUS']),
-            ({'satellite': 'S3A'}, ['COLHUB2', 'COLHUB1', 'S3']),
-            ({'satellite': 'S2B'}, ['COLHUB2', 'COLHUB1', 'DHUS']),
+            ({'mission': 'Sentinel-1'},
+             config.CONFIG['SATELLITES']['S1A']['source']),
+            ({'mission': 'Sentinel-2'},
+             config.CONFIG['SATELLITES']['S2A']['source']),
+            ({'mission': 'Sentinel-3'},
+             config.CONFIG['SATELLITES']['S3A']['source']),
+            ({'satellite': 'S1A'},
+             config.CONFIG['SATELLITES']['S1A']['source']),
+            ({'satellite': 'S3A'},
+             config.CONFIG['SATELLITES']['S3A']['source']),
+            ({'satellite': 'S2B'},
+             config.CONFIG['SATELLITES']['S2B']['source']),
             ({'identifier': "S1A_IW_OCN__2SDV_20160924T181320_"
                             "20160924T181345_013198_014FDF_6692.zip"},
-             ['COLHUB2', 'COLHUB1', 'DHUS']),
+             config.CONFIG['SATELLITES']['S1A']['source'])
         ]
         for query, server in queries:
             with self.subTest(query=query):
