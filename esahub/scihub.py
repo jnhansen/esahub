@@ -19,6 +19,7 @@ import ssl
 # import math
 import lxml.etree as ET
 import datetime as DT
+import pytz
 import multiprocessing
 import socket
 from functools import partial
@@ -414,6 +415,7 @@ def _build_query(query={}):
         queries will be concatenated with ampersands (&).
     """
     query_list = []
+    sort_string = ''
 
     # Default ingestiontime query parameters
     start = '1970-01-01T00:00:00.000Z'
@@ -437,20 +439,22 @@ def _build_query(query={}):
 
         elif key == 'time':
             if val == 'today':
-                start = DT.datetime.strftime(DT.datetime.now(),
+                start = DT.datetime.strftime(DT.datetime.now(pytz.utc),
                                              '%Y-%m-%dT00:00:00.000Z')
             elif val == 'yesterday':
-                start = DT.datetime.strftime(DT.datetime.now()-DT.timedelta(1),
+                start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
+                                             - DT.timedelta(1),
                                              '%Y-%m-%dT00:00:00.000Z')
-                end = DT.datetime.strftime(DT.datetime.now(),
+                end = DT.datetime.strftime(DT.datetime.now(pytz.utc),
                                            '%Y-%m-%dT00:00:00.000Z')
             elif val == 'midnight':
-                end = DT.datetime.strftime(DT.datetime.now(),
+                end = DT.datetime.strftime(DT.datetime.now(pytz.utc),
                                            '%Y-%m-%dT00:00:00.000Z')
             elif val == '24h':
-                start = DT.datetime.strftime(DT.datetime.now()-DT.timedelta(1),
+                start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
+                                             - DT.timedelta(1),
                                              '%Y-%m-%dT%H:%M:%S.000Z')
-                start = DT.datetime.strftime(DT.datetime.now(),
+                start = DT.datetime.strftime(DT.datetime.now(pytz.utc),
                                              '%Y-%m-%dT%H:%M:%S.000Z')
 
         elif key == 'geo':
@@ -479,6 +483,9 @@ def _build_query(query={}):
         elif key == 'query':
             query_list.append('{0}'.format(query['query']))
 
+        elif key == 'sort':
+            sort_string = '&orderby={} {}'.format(*query['sort'])
+
         # Not a special keyword. Pass directly to SciHub
         else:
             query_list.append('{}:{}'.format(key, val))
@@ -503,9 +510,10 @@ def _build_query(query={}):
     #           -5.250 46.800,-5.250 57.400,-25.100 57.400,-25.100 46.800)))")
     #           &rows=25&start=0'
     #
-    query_url = 'q={q}&start=0&rows={rows}'.format(
+    query_url = 'q={q}&start=0&rows={rows}{sort}'.format(
         q=query_string,
-        rows=CONFIG['GENERAL']['ENTRIES']
+        rows=CONFIG['GENERAL']['ENTRIES'],
+        sort=sort_string
     )
     return query_url
 
@@ -560,8 +568,9 @@ def _download(url, destination, quiet=None, queue=None):
         else:
             size = int(response.headers.get("Content-Length"))
         # size_str = helpers.b2h(size)
-        queue.put((file_name, {'total': size,
-                               'desc': 'Downloading {name}'}))
+        if queue is not None:
+            queue.put((file_name, {'total': size,
+                                   'desc': 'Downloading {name}'}))
         CHUNK = 32 * 1024
         chunks_done = 0
         t_start_download = time.time()
@@ -918,7 +927,7 @@ def download(product, queue=None, stopqueue=True):
     b_file_okay = False
     complete = False
 
-    full_file_path = os.path.join(CONFIG['GENERAL']['TMP_DIR'], file_name)
+    full_file_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'], file_name)
 
     #
     # Establish authentication depending on the mission (S1/S2/S3)

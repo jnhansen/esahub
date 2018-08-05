@@ -28,7 +28,8 @@ class Screen():
         # status_fmt = ''
         if self._status is not None:
             self._status.close()
-            self._status = tqdm(total=total)
+            self._status = tqdm(total=total,
+                                disable=CONFIG['GENERAL']['QUIET'])
 
     def __setitem__(self, key, total):
         pass
@@ -54,7 +55,8 @@ class Screen():
             self._lines[key] = tqdm(
                 desc=desc, total=total, unit='B', unit_scale=True,
                 ascii=True, bar_format=BAR_FORMAT,
-                mininterval=0.3
+                mininterval=0.3,
+                disable=CONFIG['GENERAL']['QUIET']
             )
 
     def set_status(self, counter, total=None, msg=None):
@@ -67,9 +69,9 @@ class Screen():
     def quit(self):
         # Close all progress bars
         if self._status is not None:
-            self._status.close()
-        for key, pbar in self._lines:
-            pbar.close()
+            del self._status
+        for key, pbar in self._lines.items():
+            del pbar
 
     def __del__(self):
         self.quit()
