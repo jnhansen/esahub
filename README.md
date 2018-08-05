@@ -30,7 +30,7 @@ $ pytest -v esahub/tests/
 
 *Note:* Running the tests may take a while as it includes testing live downloads from SciHub (although with very small files).
 
-## <a name="usage"></a>Usage
+## <a name="usage"></a>Command Line Usage
 ```
 $ esahub [cmd] [args] ...
 ```
@@ -65,9 +65,8 @@ $ esahub [cmd] [args] ...
 | <code>-m &#124; --mode &lt;MODE&gt;</code>      | `doctor`        | <code>zip&#124;file</code>
 | <code>--delete</code>                     | `doctor`        | delete corrupt files
 | <code>--repair</code>                     | `doctor`        | redownload corrupt files
-| <code>--email</code>                      | `daily`         | send email report
-| <code>--gui</code>                        | `daily`         | use the GUI (by default runs in background)
-| <code>--sync</code>                       | `diff`          | Attempt to synchronize the S3 storage with the index and local metadata.
+| <code>--email</code>                      | `all`         | send email report
+| <code>--gui</code>                        | `all`         | use the GUI (by default runs in background)
 
 
 ### Examples
@@ -90,6 +89,17 @@ $ esahub get --in=Sen2_IE.json --log
 **Ex 4.** Check all zip archives in a custom directory for MD5 consistency and generate a log file.
 ```
 $ esahub doctor --dir=/path/to/dir/ --mode=md5 --log
+```
+
+
+## Python API
+```python
+from esahub import scihub
+query = {'mission': 'Sentinel-1',
+         'geo': 'POINT(-9.0 53.0)',
+         'time': 'today'}
+files = scihub.search(query)
+scihub.download_many(files)
 ```
 
 

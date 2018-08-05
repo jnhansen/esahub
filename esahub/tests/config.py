@@ -18,7 +18,7 @@ TEST_DATA_DIR_TMP = 'esahub/tests/data/tmp/'
 
 
 def prepare():
-    for d in (TEST_DATA_DIR_ORIGINAL, TEST_DATA_DIR_CORRUPT, 
+    for d in (TEST_DATA_DIR_ORIGINAL, TEST_DATA_DIR_CORRUPT,
               TEST_DATA_DIR_TMP, ):
         if not os.path.exists(d):
             os.makedirs(d)
