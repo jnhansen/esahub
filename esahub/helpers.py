@@ -6,17 +6,26 @@ from dateutil.parser import parse as parsedate
 from dateutil.tz import tzutc
 import re
 import json
+from distutils.spawn import find_executable
 
 PY2 = sys.version_info < (3, 0)
+DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
+
+
+# -----------------------------------------------------------------------------
+# The following are helper functions for Python 2/3 compatibility.
+# -----------------------------------------------------------------------------
+def _which(exe):
+    return find_executable(exe)
+
+
+_range = range if not PY2 else xrange
+
 
 # -----------------------------------------------------------------------------
 # The following are helper functions to aid with the correct formatting of
 # metadata extracted from the satellite metadata.
 # -----------------------------------------------------------------------------
-
-DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
-
-
 def to_date(string, fmt=None, output='str'):
     if string.startswith('UTC='):
         string = string[4:] + 'Z'
@@ -161,8 +170,7 @@ def chunks(l, n):
     iterable
         Consecutive slices of l of size n.
     """
-    range_fn = range if not PY2 else xrange
-    for i in range_fn(0, len(l), n):
+    for i in _range(0, len(l), n):
         yield l[i:i + n]
 
 

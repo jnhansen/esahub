@@ -45,7 +45,6 @@ setuptools.setup(
         'lxml',
         'pyproj',
         'shapely',
-        'netCDF4',
         'python-dateutil',
         'pytz',
         'tqdm'

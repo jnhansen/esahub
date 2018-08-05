@@ -4,9 +4,8 @@
 
 TODO: Switch from multiprocessing to threading?
 
-
 """
-from __future__ import print_function
+import lxml.etree as ET
 import os
 import sys
 import time
@@ -17,7 +16,6 @@ import errno
 import base64
 import ssl
 # import math
-import lxml.etree as ET
 import datetime as DT
 import pytz
 import multiprocessing
@@ -197,8 +195,8 @@ class Connection(object):
             if server['host'] in url:
                 auth = server
                 break
-        if len(auth) == 0:
-            print(url)
+        # if len(auth) == 0:
+        #     print(url)
         self.login(**auth)
         return self.resolve(url)
 

@@ -6,7 +6,6 @@ import datetime as DT
 import pytz
 import os
 import sys
-import shutil
 import subprocess
 from esahub.tests import config as test_config
 from esahub import config
@@ -350,7 +349,7 @@ class ScihubDownloadTestCase(TestCase):
             self.assertIn(f['filename'], local_files_identifiers)
         for f in local_files:
             with self.subTest(file=f):
-                _, healthy, _ = check.check_file(f, mode='md5')
+                _, healthy, _ = check.check_file(f, mode='file')
                 self.assertTrue(healthy)
 
     def test_redownload(self):
@@ -361,7 +360,7 @@ class ScihubDownloadTestCase(TestCase):
         self.assertEqual(set(local_files), set(new_local_files))
         for f in local_files:
             with self.subTest(file=f):
-                _, healthy, _ = check.check_file(f, mode='md5')
+                _, healthy, _ = check.check_file(f, mode='file')
                 self.assertTrue(healthy)
 
 
@@ -460,7 +459,7 @@ class ChecksumTestCase(TestCase):
                 # equal to the md5 sum returned by bash md5 or md5sum tool.
                 #
                 for exe in ['md5', 'md5sum']:
-                    if shutil.which(exe):
+                    if helpers._which(exe) != '':
                         bash_output = subprocess.check_output([exe, f])
                         if not PY2:
                             bash_output = bash_output.decode()

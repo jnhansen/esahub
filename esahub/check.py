@@ -7,18 +7,25 @@ from __future__ import print_function
 from . import scihub, checksum, tty
 from .config import CONFIG
 import zipfile
-from netCDF4 import Dataset
 import os
 import sys
 import logging
+try:
+    from netCDF4 import Dataset
+    NETCDF_INSTALLED = True
+except ImportError:
+    NETCDF_INSTALLED = False
 
 logger = logging.getLogger('esahub')
 PY2 = sys.version_info < (3, 0)
+try:
+    ZIP_ERROR = zipfile.BadZipFile
+except AttributeError:
+    ZIP_ERROR = zipfile.BadZipfile
+
 
 # CHECKING FILE CONSISTENY
 # -----------------------------------------------------------------------------
-
-
 FILE_COUNTER = 0
 BAD_FILE_COUNTER = 0
 BAD_FILES = []
@@ -71,7 +78,7 @@ def check_file(full_file_path, mode):
             try:
                 zip_ref = zipfile.ZipFile(full_file_path, 'r')
                 zip_ref.close()
-            except zipfile.BadZipFile as e:
+            except ZIP_ERROR as e:
                 message = '{} {}'.format(tty.error('BAD ZIP FILE:'),
                                          full_file_path)
                 healthy = False
@@ -79,6 +86,9 @@ def check_file(full_file_path, mode):
                 message = '{} {}'.format(tty.success('OKAY:'), full_file_path)
                 healthy = True
         elif ext == '.nc':
+            if not NETCDF_INSTALLED:
+                raise ImportError("Need to install `netCDF4` to use this "
+                                  "feature!")
             try:
                 nc_ref = Dataset(full_file_path, 'r')
                 nc_ref.close()
