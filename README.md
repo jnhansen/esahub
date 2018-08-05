@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/jnhansen/esahub.svg?token=VQTSyenCpuXDiRgpEoZN&branch=master)](https://travis-ci.com/jnhansen/esahub)
+
 # esahub: Downloading data from ESA scihub
 Author: Johannes Hansen (johannes.hansen@ed.ac.uk)
 
