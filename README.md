@@ -18,7 +18,18 @@ You should overwrite the required settings in your `~/.esahub.conf`, especially:
 * `GENERAL.LOG_FILE`
 * `GENERAL.EMAIL_REPORT_RECIPIENTS`
 
-as well as your login details for SciHub in `SERVERS`.
+The full range of Copernicus data servers are supported, including:
+* `https://scihub.copernicus.eu/dhus`
+* `https://scihub.copernicus.eu/apihub`
+* `https://scihub.copernicus.eu/s3` (guest access)
+* `https://s5phub.copernicus.eu/dhus` (guest access)
+* `https://tmphub.copernicus.eu/dhus`
+* `https://colhub.copernicus.eu/dhus`
+* `https://colhub2.copernicus.eu/dhus`
+
+For the majority of these you will need to provide your own authentication details
+in `SERVERS`.
+
 
 ## <a name="test"></a>Testing the installation
 Further to the configuration in `~/.esahub.conf`, you can set test specific configuration in `esahub.tests.config.set_test_config()`.
