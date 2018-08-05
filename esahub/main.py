@@ -23,7 +23,7 @@ def list_local_archives():
     #
     # Collect a list of all files.
     #
-    return helpers.ls(CONFIG['GENERAL']['TMP_DIR'])
+    return helpers.ls(CONFIG['GENERAL']['DATA_DIR'])
 
 
 # -----------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def get(query=None, limit=None):
     msg = 'Preparing {0:d} files ({1}) for download into {2} ...'.format(
         len(file_list),
         helpers.b2h(size),
-        CONFIG['GENERAL']['TMP_DIR']
+        CONFIG['GENERAL']['DATA_DIR']
     )
     logging.info(msg)
     tty.status(msg)
