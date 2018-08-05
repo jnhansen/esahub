@@ -126,24 +126,12 @@ class ScihubTestCase(TestCase):
                 )
 
     def test__uuid_from_identifier(self):
-        # TODO: don't have static uuid's here
-        uuids = [
-            ("S1A_IW_OCN__2SDV_20180322T154129_20180322T154143_"
-             "021129_024501_28FF", "6ea4eb6e-4775-4fd5-bfca-8302470eddea"),
-            ("S1B_IW_OCN__2SDV_20180319T045826_20180319T045840_"
-             "010096_01252B_F351", "03131fb7-f6ad-4ca3-ae69-603a31a7d392"),
-            ("S2A_MSIL1C_20180328T125131_N0206_R138_T29WPT_20180328T195708",
-             "defbc2cc-0537-4303-b7e2-60586e715c49"),
-            ("S2B_MSIL1C_20180325T234129_N0206_R030_T60UVC_20180326T011902",
-             "a0eb98fb-0379-4af3-a288-5f0dedbfaac4"),
-            # ("S3A_OL_1_EFR____20180328T071326_20180328T071326_"
-            #  "20180328T094706_0000_029_234_3960_SVL_O_NR_002",
-            #  "39c4d7ac-0c81-4689-9858-e3429f48b078"),
-        ]
-        for product, uuid in uuids:
+        products = scihub.search({}, limit=1)
+        for product in products:
             with self.subTest(product=product):
                 self.assertEqual(
-                    scihub._uuid_from_identifier(product), uuid
+                    scihub._uuid_from_identifier(product['title']),
+                    product['uuid']
                 )
 
     # def test__download_url_from_identifier(self):
