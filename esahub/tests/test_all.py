@@ -231,7 +231,7 @@ class ScihubSearchTestCase(TestCase):
             q = {'mission': 'Sentinel-3'}
             server = scihub._auto_detect_server_from_query(
                 q, available_only=True)[0]
-            url = scihub._build_url(q, server=q)
+            url = scihub._build_url(q, server=server)
             result = scihub.resolve(url)
             html = result.read()
             #
