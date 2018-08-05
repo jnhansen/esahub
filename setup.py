@@ -50,12 +50,11 @@ setuptools.setup(
         'pytz',
         'tqdm'
     ],
-    setup_requires=['nose'],
+    setup_requires=['pytest-runner'],
     entry_points={
         'console_scripts': ['esahub=esahub.cli:main'],
     },
     include_package_data=True,
     zip_safe=False,
-    test_suite='nose.collector',
-    tests_require=['nose']
+    tests_require=['pytest']
 )
