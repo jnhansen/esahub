@@ -54,7 +54,7 @@ GENERAL:
   # -------------------------------------------------------------------------------------------- #
   # Specify default query parameters here.
   QUERY: {}
-  DEFAULT_SERVER: 'DHUS'
+  DEFAULT_SERVER: 'API'
 
 
 # -------------------------------------------------------------------------------------------- #
@@ -62,66 +62,59 @@ GENERAL:
 # -------------------------------------------------------------------------------------------- #
 SATELLITES:
   S1A:
-    source: ['COLHUB2','COLHUB1','DHUS']
+    source: ['COLHUB2','COLHUB1','API','DHUS']
     platform: 'Sentinel-1'
     suffix: '.SAFE'
     ext: '.zip'
-    meta: 'S1'
-    bucket: 'evdcsen1'
   S1B:
-    source: ['COLHUB2','COLHUB1','DHUS']
+    source: ['COLHUB2','COLHUB1','API','DHUS']
     platform: 'Sentinel-1'
     suffix: '.SAFE'
     ext: '.zip'
-    meta: 'S1'
-    bucket: 'evdcsen1'
   S2A:
-    source: ['COLHUB2','COLHUB1','DHUS']
+    source: ['COLHUB2','COLHUB1','API','DHUS']
     platform: 'Sentinel-2'
     suffix: '.SAFE'
     ext: '.zip'
-    meta: 'S2'
-    bucket: 'evdcsen2'
   S2B:
-    source: ['COLHUB2','COLHUB1','DHUS']
+    source: ['COLHUB2','COLHUB1','API','DHUS']
     platform: 'Sentinel-2'
     suffix: '.SAFE'
     ext: '.zip'
-    meta: 'S2'
-    bucket: 'evdcsen2'
   S3A:
-    source: ['COLHUB2','COLHUB1','S3']
+    source: ['COLHUB2','COLHUB1','API','S3']
     platform: 'Sentinel-3'
     suffix: '.SEN3'
     ext: '.zip'
-    meta: 'S3'
-    bucket: 'evdcsen3'
   S5P:
-    source:
+    source: ['COLHUB2','COLHUB1','S5P']
     platform: 'Sentinel-5'
     suffix: ''
     ext: '.nc'
-    meta: 'S5'
-    bucket: 'evdcsen5'
   AE:
     source:
     platform: 'ADM-AEOLUS'
     suffix: ''
     ext: '.tgz'
-    meta: 'AEOLUS'
-    bucket: 'evdcaeolus'
 
 
 # -------------------------------------------------------------------------------------------- #
 # DATA HOSTS CONFIGURATION
 # -------------------------------------------------------------------------------------------- #
+
+# Add credential for all services you are signed up for.
+
 SERVERS:
   S3:
     host: 'https://scihub.copernicus.eu/s3'
-    user: ''
-    password: ''
-  S2B:
-    host: 'https://scihub.copernicus.eu/s2b'
+    user: 's3guest'
+    password: 's3guest'
+  S5P:
+    host: 'https://s5phub.copernicus.eu/dhus'
+    user: 's5pguest'
+    password: 's5pguest'
+  API:
+    host: 'https://scihub.copernicus.eu/apihub'
     user: ''
     password: ''
   DHUS:
