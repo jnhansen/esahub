@@ -209,7 +209,7 @@ class ScihubSearchTestCase(TestCase):
         test_config.set_test_config()
 
     def test_query_entries(self):
-        query = {'mission': 'Sentinel-1'}
+        query = {'mission': 'Sentinel-3'}
         server = scihub._auto_detect_server_from_query(query,
                                                        available_only=True)[0]
         url = scihub._build_url(query, server)
@@ -224,9 +224,7 @@ class ScihubSearchTestCase(TestCase):
 
     def test_queries(self):
         queries = [
-            # (name, query, server)
-            ('S1', {'mission': 'Sentinel-1'}),
-            ('S2', {'mission': 'Sentinel-2'}),
+            # (name, query)
             ('S3', {'mission': 'Sentinel-3'}),
         ]
         for name, q in queries:
@@ -242,7 +240,7 @@ class ScihubSearchTestCase(TestCase):
                 self.assertEqual(result.code, 200)
 
         with self.subTest('count entries'):
-            q = {'mission': 'Sentinel-1'}
+            q = {'mission': 'Sentinel-3'}
             server = scihub._auto_detect_server_from_query(
                 q, available_only=True)[0]
             url = scihub._build_url(q, server=q)
@@ -257,8 +255,8 @@ class ScihubSearchTestCase(TestCase):
 
     def test_temporal_queries(self):
         with self.subTest('yesterday'):
-            file_list = scihub.search({'mission': 'Sentinel-1',
-                                       'time': 'yesterday', 'type': 'GRD'},
+            file_list = scihub.search({'mission': 'Sentinel-3',
+                                       'time': 'yesterday'},
                                       limit=200)
             yesterday = DT.datetime.now(pytz.utc)-DT.timedelta(1)
             today = DT.datetime.now(pytz.utc)
@@ -274,8 +272,8 @@ class ScihubSearchTestCase(TestCase):
                 self.assertLessEqual(f['ingestiondate'], end)
 
         with self.subTest('today'):
-            file_list = scihub.search({'mission': 'Sentinel-1',
-                                       'time': 'today', 'type': 'GRD'},
+            file_list = scihub.search({'mission': 'Sentinel-3',
+                                       'time': 'today'},
                                       limit=200)
             today = DT.datetime.now(pytz.utc)
             start = DT.datetime(today.year, today.month, today.day,
@@ -306,7 +304,7 @@ class ScihubSearchTestCase(TestCase):
                                                   tolerance=0.1))
 
     def test_get_file_list(self):
-        q = {'mission': 'Sentinel-1'}
+        q = {'mission': 'Sentinel-3'}
         limit = 107
         file_list = scihub.search(q, limit=limit)
         #
