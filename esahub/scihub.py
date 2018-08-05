@@ -625,6 +625,12 @@ def _download(url, destination, quiet=None, queue=None):
 #     return _get_file_list_from_url(url)
 
 
+def _get_available_servers():
+    servers = [server for server, conf in CONFIG['SERVERS'].items()
+               if len(conf['user']) > 0 and len(conf['password']) > 0]
+    return servers
+
+
 def _ping_single(servername):
     # print('Pinging {} ...'.format(servername))
     server = CONFIG['SERVERS'][servername]
@@ -638,26 +644,35 @@ def _ping_single(servername):
         return (servername, e.status)
 
 
-def _auto_detect_server_from_query(query):
+def _auto_detect_server_from_query(query, available_only=False):
+    servers = None
+
     if 'satellite' in query and query['satellite'] in CONFIG['SATELLITES']:
-        return CONFIG['SATELLITES'][query['satellite']]['source']
+        servers = CONFIG['SATELLITES'][query['satellite']]['source']
 
     if 'identifier' in query:
         sat = query['identifier'][:3]
         if sat in CONFIG['SATELLITES']:
-            return CONFIG['SATELLITES'][sat]['source']
+            servers = CONFIG['SATELLITES'][sat]['source']
 
     if 'mission' in query:
         sats = helpers.select(CONFIG['SATELLITES'], platform=query['mission'])
         if len(sats) > 0:
             ll = [source for sat in sats.values() for source in sat['source']]
-            return list(OrderedDict.fromkeys(ll))
+            servers = list(OrderedDict.fromkeys(ll))
 
     #
     # If the server couldn't be determined from the query, return a list of
     # all servers.
     #
-    return list(CONFIG['SERVERS'].keys())
+    if servers is None:
+        servers = list(CONFIG['SERVERS'].keys())
+
+    if available_only:
+        servers = [server for server in servers
+                   if server in _get_available_servers()]
+
+    return servers
 
 
 def _uuid_from_identifier(identifier):
@@ -798,7 +813,7 @@ def search(query={}, server='auto', limit=None, **kwargs):
     if server == 'all':
         servers = list(CONFIG['SERVERS'].keys())
     elif server == 'auto':
-        servers = _auto_detect_server_from_query(query)
+        servers = _auto_detect_server_from_query(query, available_only=True)
     else:
         servers = [server]
 

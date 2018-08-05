@@ -52,8 +52,7 @@ class ScihubTestCase(TestCase):
     # def setUp(self):
 
     def test_servers(self):
-        # for name, auth in config.CONFIG['SERVERS'].items():
-        for name in ['DHUS', 'S3', 'S2B', 'COLHUB1', 'COLHUB2']:
+        for name in scihub._get_available_servers():
             auth = config.CONFIG['SERVERS'][name]
             conn = scihub.Connection(**auth)
             with self.subTest(server_name=name):
@@ -127,6 +126,7 @@ class ScihubTestCase(TestCase):
                 )
 
     def test__uuid_from_identifier(self):
+        # TODO: don't have static uuid's here
         uuids = [
             ("S1A_IW_OCN__2SDV_20180322T154129_20180322T154143_"
              "021129_024501_28FF", "6ea4eb6e-4775-4fd5-bfca-8302470eddea"),
@@ -166,7 +166,7 @@ class ScihubTestCase(TestCase):
     #     pass
 
     def test_resolve(self):
-        for name in ['DHUS', 'S3', 'S2B']:
+        for name in scihub._get_available_servers():
             with self.subTest(server_name=name):
                 response = scihub.resolve(
                     scihub._build_url({'query': '*:*'}, name)
@@ -209,7 +209,10 @@ class ScihubSearchTestCase(TestCase):
         test_config.set_test_config()
 
     def test_query_entries(self):
-        url = scihub._build_url({'mission': 'Sentinel-1'}, 'DHUS')
+        query = {'mission': 'Sentinel-1'}
+        server = scihub._auto_detect_server_from_query(query,
+                                                       available_only=True)[0]
+        url = scihub._build_url(query, server)
         result = scihub.resolve(url)
         html = result.read()
         #
@@ -222,12 +225,14 @@ class ScihubSearchTestCase(TestCase):
     def test_queries(self):
         queries = [
             # (name, query, server)
-            ('S1', {'mission': 'Sentinel-1'}, 'DHUS'),
-            ('S2', {'mission': 'Sentinel-2'}, 'DHUS'),
-            ('S3', {'mission': 'Sentinel-3'}, 'S3'),
+            ('S1', {'mission': 'Sentinel-1'}),
+            ('S2', {'mission': 'Sentinel-2'}),
+            ('S3', {'mission': 'Sentinel-3'}),
         ]
-        for name, q, server in queries:
+        for name, q in queries:
             with self.subTest(name=name):
+                server = scihub._auto_detect_server_from_query(
+                    q, available_only=True)[0]
                 url = scihub._build_url(q, server=server)
                 result = scihub.resolve(url)
                 #
@@ -238,7 +243,9 @@ class ScihubSearchTestCase(TestCase):
 
         with self.subTest('count entries'):
             q = {'mission': 'Sentinel-1'}
-            url = scihub._build_url(q, server='DHUS')
+            server = scihub._auto_detect_server_from_query(
+                q, available_only=True)[0]
+            url = scihub._build_url(q, server=q)
             result = scihub.resolve(url)
             html = result.read()
             #
@@ -301,7 +308,7 @@ class ScihubSearchTestCase(TestCase):
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-1'}
         limit = 107
-        file_list = scihub.search(q, server='DHUS', limit=limit)
+        file_list = scihub.search(q, limit=limit)
         #
         # Assert that only `limit` entries are returned.
         #
