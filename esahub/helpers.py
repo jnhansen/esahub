@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import print_function
 import os
 import sys
 import datetime as DT
@@ -21,6 +22,10 @@ def _which(exe):
 
 
 _range = range if not PY2 else xrange
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 # -----------------------------------------------------------------------------
