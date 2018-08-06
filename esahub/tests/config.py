@@ -18,19 +18,28 @@ TEST_DATA_DIR_TMP = 'esahub/tests/data/tmp/'
 
 
 def prepare():
+    #
+    # Create data directory structure
+    #
+    helpers.eprint('Creating directory structure')
     for d in (TEST_DATA_DIR_ORIGINAL, TEST_DATA_DIR_CORRUPT,
               TEST_DATA_DIR_TMP, ):
         if not os.path.exists(d):
             os.makedirs(d)
-
+    #
+    # Download test data
+    #
+    helpers.eprint('Searching for test data')
     query = {'query': 'size: ???.* KB',
              'sort': ('size', 'asc'),
              'server': 'all'}
     fs = scihub.search(query, limit=2)
     _config = config.CONFIG['GENERAL']['DATA_DIR']
     config.CONFIG['GENERAL']['DATA_DIR'] = TEST_DATA_DIR_ORIGINAL
+    helpers.eprint('Downloading test data')
     scihub.download_many(fs)
     # move and corrupt one of the files
+    helpers.eprint('Corrupt one file')
     corrupt_file = os.listdir(TEST_DATA_DIR_ORIGINAL)[-1]
     _move_from = os.path.join(TEST_DATA_DIR_ORIGINAL, corrupt_file)
     _move_to = os.path.join(TEST_DATA_DIR_CORRUPT, corrupt_file)
@@ -38,6 +47,7 @@ def prepare():
     with open(_move_to, 'wb') as f:
         f.write(b'78sadb')
     config.CONFIG['GENERAL']['DATA_DIR'] = _config
+    helpers.eprint('Test preparation done')
 
 
 def cleanup():

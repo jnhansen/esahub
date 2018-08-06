@@ -38,7 +38,7 @@ Further to the configuration in `~/.esahub.conf`, you can set test specific conf
 
 The recommended way of running tests is:
 ```
-$ pytest -v esahub/tests/
+$ python setup.py test
 ```
 
 *Note:* Running the tests may take a while as it includes testing live downloads from SciHub (although with very small files).
