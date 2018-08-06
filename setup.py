@@ -21,6 +21,7 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
 
 
 setuptools.setup(
+    use_scm_version=True,
     cmdclass={
         'build_py': BuildPyCommand,
     }
