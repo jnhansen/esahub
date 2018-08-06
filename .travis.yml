@@ -26,7 +26,7 @@ script:
 deploy:
   skip_cleanup: true
   provider: pypi
-  user: jhansen
+  user: jnhansen
   password:
     secure: gCZ5mzYDGAG/ac1aYDk8Pr4N/EATLBGmS8DNwktDDX+Cxr5qOnDbnfjvDhIj3ehNlHVstL4GuBYDM02aHSZbUqARuK/RP/bkaZNAOOj+AbTq72bgAmbDt/Ak8Eyy/iPEuXGLF+ob887hL2nIuE42lQ20tTfIJd5VGqDr9YwPUTB1z5oGkA7EpW2e7vw3beWIR77IDUyUa3pjoThtuceYm7hW42eNqwvJfpP5Ev/PEKDamgAdjjRQaHNqeW0XgtdLolxIq4L2GNkF+Wtrilc80g+PLcZz6xMYHpGLV2B948NPcXwcd5GBiU9tb99FN6imh6Fy3XJgYaUKcoOSIqJQ/eZKoAx8T8e5mcsrPTa+T5FtxtZlyyYYn6BsRLMxfM8psMrZNPQio1+wqznvvfQUYsBI+PLuyjyflDafa3Kat5hbKYM5rImHF2BBQU3/CgZr6KpkGqc0QMK+hVJB7ka6AoU/liNUsGDFyGXSebp/Tyf8qBKINcP2ahlxfSjzJ1UQuPrLD8iSK2x34sCCXEG17gb82YOBaxP9RQMRtOBzMoS+6FZwIRYVdS0u7ZTSmRmSLqnYwIPrFl+DPo9l9eaveLdn5Ro5Sps/DuEkxc0vD8nr7qMv2dAELg3oIXtoXmqe+aVz9T40qy/jH/Xt1tuJLEWLnRozdNnsRS+RIGwwtn4=
   distributions: sdist bdist_wheel
