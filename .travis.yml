@@ -1,4 +1,5 @@
 sudo: false
+cache: pip
 dist: trusty
 language: python
 matrix:
