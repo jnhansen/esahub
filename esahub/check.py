@@ -92,7 +92,7 @@ def check_file(full_file_path, mode):
             try:
                 nc_ref = Dataset(full_file_path, 'r')
                 nc_ref.close()
-            except OSError as e:
+            except (OSError, IOError) as e:
                 message = '{} {}'.format(tty.error('BAD NETCDF FILE:'),
                                          full_file_path)
                 healthy = False

@@ -17,6 +17,11 @@ TEST_DATA_DIR_CORRUPT = 'esahub/tests/data/corrupt/'
 TEST_DATA_DIR_TMP = 'esahub/tests/data/tmp/'
 
 
+def _corrupt_binary(path):
+    with open(path, 'wb') as f:
+        f.write(b'78sadb')
+
+
 def prepare():
     #
     # Create data directory structure
@@ -40,8 +45,7 @@ def prepare():
     _move_from = os.path.join(TEST_DATA_DIR_ORIGINAL, corrupt_file)
     _move_to = os.path.join(TEST_DATA_DIR_CORRUPT, corrupt_file)
     shutil.move(_move_from, _move_to)
-    with open(_move_to, 'wb') as f:
-        f.write(b'78sadb')
+    _corrupt_binary(_move_to)
     config.CONFIG['GENERAL']['DATA_DIR'] = _config
 
 
