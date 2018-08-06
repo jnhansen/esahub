@@ -1,4 +1,4 @@
-sudo: required
+sudo: false
 dist: trusty
 language: python
 matrix:
@@ -29,8 +29,6 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pytest
   - source activate test-environment
   
-  # Need hdf5 library for netCDF4:
-  - sudo apt-get install hdf5
   - python setup.py install
 
   # set library path
