@@ -27,6 +27,7 @@ deploy:
   user: jhansen
   password:
     secure: uDFCgp2dDWtWfbx78KRTQ3uBLpl/Z8RGI+Q3oZ5qXAksB4IrVpF6/lc9ffJf/dzV0RrMTdkxjtDS+r5vdSlOtv9zGGfKyngkqgwn7Ef2C5x1zBjw+6eEKPP7puCHELofxf/GG7ciWieOgvNMqRnA4V8UcqTZxHv7OPv86jWK4IyuK+k++riktTxhYRlKzfEHYbnhVRzyziwyedy48TGz2BApwZPAddK2xISy9+SlJI2Oygv7WkUEcOgufqaHQ8ddPBXUiA8UbAy3m1ggtw5Zg+M1CdTB4Y3QzovR84UZzsadw9dFn6DxoKEqqXYJHLn3jxIRoFpHlgekOuQ/RPut78z7oVaYmtPYwHYRQ3qtwqnyy3hk8i5eIG1zq1qRzC719wbKa/tUs1GXaHT4ev4MTHKaM4aVQvJe3mxZwPfkF47rnmbpi5+meeGsh4jILczLt0zj+4xs8kcltsgyVhY73VK+Rh04xEN5vWB+eHSITDfbhZ9ODCm3XeROQL9q/K5u2IPh42SY6OdOmqjTJfnqeP4/UH+Gp0AFhnUsoux9EBA8BfX3oordN710bFXQ3JnF2iK81LAXxV40CrGU44STKHReXzOLphOjz0iB2FvC5lv30UXBO+q7zU9PJh8cdrL+RsLdI2SA3sUgsSTNc8UwcqSx6ZmNsB7d0UD4Y1HnFZo=
-  server: https://test.pypi.org/
-  # on:
-  #   tags: true
+  server: https://test.pypi.org/legacy
+  on:
+    python: 3.6
+    # tags: true
