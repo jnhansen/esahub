@@ -64,11 +64,13 @@ def cleanup():
 
 def set_test_config():
     # logging.disable(logging.CRITICAL)
+    # Overwrite custom settings in ~/.esahub.conf
+    config.load('esahub/config.yaml')
     config.CONFIG['GENERAL']['QUIET'] = True
     config.CONFIG['GENERAL']['DATA_DIR'] = TEST_DATA_DIR_TMP
-    config.CONFIG['GENERAL']['TIMEOUT'] = 3.0
+    config.CONFIG['GENERAL']['TIMEOUT'] = 10.0
     config.CONFIG['GENERAL']['RECONNECT_TIME'] = 0.0
-    config.CONFIG['GENERAL']['TRIALS'] = 1
+    config.CONFIG['GENERAL']['TRIALS'] = 3
     config.CONFIG['GENERAL']['WAIT_ON_503'] = False
 
 

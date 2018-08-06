@@ -24,6 +24,7 @@ else:
         @contextlib.contextmanager
         def subTest(self, msg='', **params):
             """Mock subTest method so no exception is raised under Python2."""
+            helpers.eprint('subTest:', msg, params)
             yield
             return
 
@@ -32,6 +33,7 @@ else:
 # TEST SETUP
 # -----------------------------------------------------------------------------
 def setUpModule():
+    test_config.set_test_config()
     test_config.prepare()
 
 
@@ -349,7 +351,8 @@ class ScihubDownloadTestCase(TestCase):
             self.assertIn(f['filename'], local_files_identifiers)
         for f in local_files:
             with self.subTest(file=f):
-                _, healthy, _ = check.check_file(f, mode='file')
+                _, healthy, msg = check.check_file(f, mode='file')
+                helpers.eprint(msg)
                 self.assertTrue(healthy)
 
     def test_redownload(self):
@@ -360,7 +363,8 @@ class ScihubDownloadTestCase(TestCase):
         self.assertEqual(set(local_files), set(new_local_files))
         for f in local_files:
             with self.subTest(file=f):
-                _, healthy, _ = check.check_file(f, mode='file')
+                _, healthy, msg = check.check_file(f, mode='file')
+                helpers.eprint(msg)
                 self.assertTrue(healthy)
 
 
@@ -584,7 +588,8 @@ class MainTestCase(TestCase):
                 #
                 # Assert that each corrupt file has been repaired.
                 #
-                _, healthy, _ = check.check_file(repaired_f, mode='file')
+                _, healthy, msg = check.check_file(repaired_f, mode='file')
+                helpers.eprint(msg)
                 self.assertTrue(healthy)
 
 
