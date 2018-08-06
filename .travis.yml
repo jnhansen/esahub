@@ -29,7 +29,7 @@ deploy:
   password:
     secure: kbe0WarlMnFs8dlEpx5X7/Hr5W5y1X6B392c3v5sR3WAcfmgHBiKB3R0U5fK85JLxxQahEObSUw5JEIgIF/Z8lRjNM+5egRmRTHe8jUbsie3KCeygoGwlfW/HzslNsAzYKoMwqW9PgM/xm6KSk2JQGNIc2fbqD4LAg3sdhs35kRZ/NYzfcDUog+bScoPkJSZsqQIKDKwIO6rNsUTdn0ERLl56GVsgZtl5xaLiyUTTVpd5wI97HUY+WK1WMeQX2/4xbnTUyD62HIlTCVcGXGPdhURrqIGTDaRIr2DIjAc0i6Ahy4TJ+gQD6+L8FqMbQPc0H8U8of8EjXmWWVypT7HXlP3beoEn1Dt/YzADrL6jNNnMd69Pw3EEs3aOfS6wTbRXGK5nTrOxHlQ6LfiHUqaB50mr2y8NFeAtP/PynzmffNoKlrTWdBh7pz0t5q6goiolikeDEDRHZR0auJ7ieKOSzd2fS+2fyk5NRNxMdD1YBGVggqseqaKlrLiwLCUSPdZiINpUfPK80jRB5Wv6Ck0ny1+8kAl0Ac5rHcsfXmNF6A3HkxuBOnbm/QNrmJ7CqChDD/7RlEp6widq/PwoyVUEQqLFFXxZup4w8p6UA+2IX6ccOSnzm5XYGGXfNEPYXCcJcjQpiU0GUBg7FKcseJZVbouAd7FKddlmbWtUMk0Dis=
   distributions: sdist bdist_wheel
-  server: https://test.pypi.org/legacy
+  server: https://test.pypi.org/legacy/
   on:
     python: 3.6
     tags: true
