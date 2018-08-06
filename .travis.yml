@@ -23,6 +23,7 @@ install:
 script:
 - python setup.py test
 deploy:
+  skip_cleanup: true
   provider: pypi
   user: jhansen
   password:
