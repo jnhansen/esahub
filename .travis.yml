@@ -2,37 +2,31 @@ sudo: false
 dist: trusty
 language: python
 matrix:
-    include:
-        - python: 2.7
-        - python: 3.5
-        - python: 3.6
-
-# command to install dependencies
+  include:
+  - python: 2.7
+  - python: 3.5
+  - python: 3.6
 install:
-  # code below is taken from http://conda.pydata.org/docs/travis.html
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
-
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pytest
-  - source activate test-environment
-  
-  - python setup.py install
-
-  # set library path
-  - export LD_LIBRARY_PATH=$HOME/miniconda/envs/test-environment/lib/:$LD_LIBRARY_PATH
-
-# command to run tests
+- if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+  -O miniconda.sh; else wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- bash miniconda.sh -b -p $HOME/miniconda
+- export PATH="$HOME/miniconda/bin:$PATH"
+- hash -r
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pytest
+- source activate test-environment
+- pip install .
+- export LD_LIBRARY_PATH=$HOME/miniconda/envs/test-environment/lib/:$LD_LIBRARY_PATH
 script:
-  - python setup.py test
+- python setup.py test
+deploy:
+  provider: pypi
+  user: jhansen
+  password:
+    secure: uDFCgp2dDWtWfbx78KRTQ3uBLpl/Z8RGI+Q3oZ5qXAksB4IrVpF6/lc9ffJf/dzV0RrMTdkxjtDS+r5vdSlOtv9zGGfKyngkqgwn7Ef2C5x1zBjw+6eEKPP7puCHELofxf/GG7ciWieOgvNMqRnA4V8UcqTZxHv7OPv86jWK4IyuK+k++riktTxhYRlKzfEHYbnhVRzyziwyedy48TGz2BApwZPAddK2xISy9+SlJI2Oygv7WkUEcOgufqaHQ8ddPBXUiA8UbAy3m1ggtw5Zg+M1CdTB4Y3QzovR84UZzsadw9dFn6DxoKEqqXYJHLn3jxIRoFpHlgekOuQ/RPut78z7oVaYmtPYwHYRQ3qtwqnyy3hk8i5eIG1zq1qRzC719wbKa/tUs1GXaHT4ev4MTHKaM4aVQvJe3mxZwPfkF47rnmbpi5+meeGsh4jILczLt0zj+4xs8kcltsgyVhY73VK+Rh04xEN5vWB+eHSITDfbhZ9ODCm3XeROQL9q/K5u2IPh42SY6OdOmqjTJfnqeP4/UH+Gp0AFhnUsoux9EBA8BfX3oordN710bFXQ3JnF2iK81LAXxV40CrGU44STKHReXzOLphOjz0iB2FvC5lv30UXBO+q7zU9PJh8cdrL+RsLdI2SA3sUgsSTNc8UwcqSx6ZmNsB7d0UD4Y1HnFZo=
+  server: https://test.pypi.org/
+  # on:
+  #   tags: true
