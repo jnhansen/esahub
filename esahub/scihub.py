@@ -809,7 +809,7 @@ def search(query={}, server='auto', limit=None, **kwargs):
         server = query.pop('server')
 
     if server == 'all':
-        servers = list(CONFIG['SERVERS'].keys())
+        servers = _get_available_servers()
     elif server == 'auto':
         servers = _auto_detect_server_from_query(query, available_only=True)
     else:
