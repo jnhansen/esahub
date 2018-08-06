@@ -6,9 +6,7 @@ Author: Johannes Hansen (johannes.hansen@ed.ac.uk)
 ## <a name="setup"></a>Setup
 Install `esahub`:
 ```
-$ git clone https://github.com/jnhansen/esahub .
-$ cd esahub
-$ pip install .
+$ pip install esahub
 ```
 
 This will also create a YAML configuration file in `~/.esahub.conf` (unless that file exists) by
@@ -34,8 +32,6 @@ in `SERVERS`.
 
 
 ## <a name="test"></a>Testing the installation
-Further to the configuration in `~/.esahub.conf`, you can set test specific configuration in `esahub.tests.config.set_test_config()`.
-
 The recommended way of running tests is:
 ```
 $ python setup.py test
