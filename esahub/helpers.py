@@ -16,6 +16,7 @@ DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
 # The following are helper functions for Python 2/3 compatibility.
 # -----------------------------------------------------------------------------
 def _which(exe):
+    """Returns path of `exe` if found, else None."""
     return find_executable(exe)
 
 

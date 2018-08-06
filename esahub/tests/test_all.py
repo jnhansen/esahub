@@ -459,7 +459,7 @@ class ChecksumTestCase(TestCase):
                 # equal to the md5 sum returned by bash md5 or md5sum tool.
                 #
                 for exe in ['md5', 'md5sum']:
-                    if helpers._which(exe) != '':
+                    if helpers._which(exe) is not None:
                         bash_output = subprocess.check_output([exe, f])
                         if not PY2:
                             bash_output = bash_output.decode()
