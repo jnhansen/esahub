@@ -88,7 +88,7 @@ def parse_datetime(value, dayfirst=True, force=None):
         # Attempt to split into pair of values
         # if explicitly given a range
         #
-        for splitter in [',', ' to ']:
+        for splitter in [' to ', '-', ',']:
             if splitter in value:
                 parts = value.split(splitter)
                 if len(parts) > 2:

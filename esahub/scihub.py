@@ -466,11 +466,6 @@ def _build_query(query={}):
             # Build satellite selection query:
             query_list.append('identifier:{0}*'.format(query['satellite']))
 
-        elif key == 'from_time':
-            start = query['from_time']
-        elif key == 'to_time':
-            end = query['to_time']
-
         elif key == 'time':
             start, end = _parse_time_parameter(val)
 

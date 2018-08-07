@@ -67,9 +67,7 @@ $ esahub [cmd] [args] ...
 | <code>--mission &lt;MISSION&gt;</code>    | <code>ls&#124;get</code> | <code>Sentinel-1&#124;Sentinel-2&#124;Sentinel-3</code> (default: `Sentinel-3`)
 | <code>-g &#124; --geo &lt;WKT&gt;</code>  | <code>ls&#124;get</code> | geospatial location in WKT format
 | <code>--location &lt;LOCATION&gt;</code>  | <code>ls&#124;get</code> | location as defined in config `LOCATIONS`
-| <code>-A &#124; --from_time &lt;TIME&gt;</code> | <code>ls&#124;get</code> | start time in format `%Y-%m-%dT%H:%M:%S.000Z`
-| <code>-B &#124; --to_time &lt;TIME&gt;</code>   | <code>ls&#124;get</code> | end time in format `%Y-%m-%dT%H:%M:%S.000Z`
-| <code>-t &#124; --time &lt;ARG&gt;</code>       | <code>ls&#124;get</code> | Convenience wrapper for `--from_time` and `--to_time` <br/> <code>today&#124;yesterday&#124;24h&#124;midnight</code>
+| <code>-t &#124; --time &lt;ARG&gt;</code>       | <code>ls&#124;get</code> | Supports a variety of datetime string formats.
 | <code>--type &lt;TYPE&gt;</code>                | <code>ls&#124;get</code> | e.g. `GRD`
 | <code>-q &#124; --query &lt;QUERY&gt;</code>    | <code>ls&#124;get</code> | custom query for SciHub, e.g. for single archive: `identifier:...`
 | <code>-m &#124; --mode &lt;MODE&gt;</code>      | `doctor`        | <code>zip&#124;file</code>
@@ -77,6 +75,21 @@ $ esahub [cmd] [args] ...
 | <code>--repair</code>                     | `doctor`        | redownload corrupt files
 | <code>--email</code>                      | `all`         | send email report
 | <code>--gui</code>                        | `all`         | use the GUI (by default runs in background)
+
+
+## Datetime parsing
+The following are examples of datetime formats that will be automatically parsed into a date or date range:
+
+The following single dates will be explicitly converted to the date range covering the given year, month, or day:
+* `2016`
+* `06/2018`
+* `2018/06`
+* `Sep 1, 2018`
+
+Date ranges may also be specified explicitly:
+* `2016 to 2017`
+* `Jan 2016 - Feb 2016`
+* `01/01/2016, 14/01/2016`
 
 
 ### Examples
