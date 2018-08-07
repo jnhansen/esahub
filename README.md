@@ -81,15 +81,20 @@ $ esahub [cmd] [args] ...
 The following are examples of datetime formats that will be automatically parsed into a date or date range:
 
 The following single dates will be explicitly converted to the date range covering the given year, month, or day:
-* `2016`
-* `06/2018`
-* `2018/06`
-* `Sep 1, 2018`
+* `--time 2016`
+* `--time 06/2018`
+* `--time 2018/06`
+* `--time "Sep 1, 2018"`
 
 Date ranges may also be specified explicitly:
-* `2016 to 2017`
-* `Jan 2016 - Feb 2016`
-* `01/01/2016, 14/01/2016`
+* `--time "2016 to 2017"`
+* `--time "Jan 2016 - Feb 2016"`
+* `--time "01/01/2016, 14/01/2016"`
+
+One-sided date ranges are also possible:
+* `--time "to 2017"`
+* `--time "01/2017-"`
+* `--time "01/12/2017,"`
 
 
 ### Examples

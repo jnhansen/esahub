@@ -281,7 +281,7 @@ class ScihubSearchTestCase(TestCase):
         loc, ref_coords = next(iter(config.CONFIG['LOCATIONS'].items()))
         with self.subTest(location=loc):
             file_list = scihub.search(
-                {'location': [loc], 'to_time': '2017-09-01T00:00:00Z'},
+                {'location': [loc], 'time': 'to 2017-09-01T00:00:00Z'},
                 server='S3', limit=20)
             for f in file_list:
                 with self.subTest(product=f['filename']):
@@ -597,16 +597,7 @@ class MainTestCase(TestCase):
 # utils
 # -----------------------------------------------------------------------------
 
-class UtilsTestCase(TestCase):
-
-    def setUp(self):
-        test_config.set_test_config()
-        # test_config.copy_test_data()
-
-    def tearDown(self):
-        # test_config.clear_all()
-        pass
-    
+class UtilsTestCase(TestCase):    
     def test_parse_datetime(self):
         _dt = DT.datetime
         dates = [
@@ -628,6 +619,8 @@ class UtilsTestCase(TestCase):
                                     _dt(2019, 1, 1, 0, 0, 0))),
             ('Jan 1, 2017, Jan 1, 2018', (_dt(2017, 1, 1, 0, 0, 0),
                                           _dt(2018, 1, 2, 0, 0, 0))),
+            ('to Jan 2018', (None, _dt(2018, 2, 1, 0, 0, 0))),
+            ('2015 -', (_dt(2015, 1, 1, 0, 0, 0), None)),
         ]
         for date_str, date_obj in dates:
             with self.subTest(date_str=date_str):

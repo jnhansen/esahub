@@ -79,23 +79,31 @@ def parse_datetime(value, dayfirst=True, force=None):
 
         return (start, end)
     
+    splitters = ['to', '-', ',']
     try:
+        stripped = value.strip()
+        for s in splitters:
+            if stripped.startswith(s) or stripped.endswith(s):
+                raise ValueError("This is a date range.")
         # Treat as single date
         parsed = _parse_single_value(value)
         return parsed
+
     except ValueError as e:
         #
         # Attempt to split into pair of values
         # if explicitly given a range
         #
-        for splitter in [' to ', '-', ',']:
+        for splitter in splitters:
             if splitter in value:
                 parts = value.split(splitter)
                 if len(parts) > 2:
                     limit = len(parts) // 2
                     parts = (splitter.join(parts[:limit]),
                              splitter.join(parts[limit:]))
-                start, end = [_parse_single_value(_) for _ in parts]
+                parts = [_.strip() for _ in parts]
+                start, end = [_parse_single_value(_) if bool(_) else None
+                              for _ in parts]
                 if isinstance(start, tuple):
                     start = start[0]
                 if isinstance(end, tuple):

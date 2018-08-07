@@ -432,8 +432,10 @@ def _parse_time_parameter(value):
             start = DT.datetime.strftime(parsed, DATETIME_FMT)
             end = start
         else:
-            start = DT.datetime.strftime(parsed[0], DATETIME_FMT)
-            end = DT.datetime.strftime(parsed[1], DATETIME_FMT)
+            if parsed[0] is not None:
+                start = DT.datetime.strftime(parsed[0], DATETIME_FMT)
+            if parsed[1] is not None:
+                end = DT.datetime.strftime(parsed[1], DATETIME_FMT)
 
     return start, end
 
