@@ -77,7 +77,7 @@ $ esahub [cmd] [args] ...
 | <code>--gui</code>                        | `all`         | use the GUI (by default runs in background)
 
 
-## Datetime parsing
+##### Datetime parsing
 The following are examples of datetime formats that will be automatically parsed into a date or date range:
 
 The following single dates will be explicitly converted to the date range covering the given year, month, or day:
