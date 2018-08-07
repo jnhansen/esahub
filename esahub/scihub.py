@@ -23,10 +23,12 @@ import socket
 from functools import partial
 from collections import OrderedDict
 from .config import CONFIG
-from . import helpers, tty, geo, checksum
+from . import utils, tty, geo, checksum
+
 
 logger = logging.getLogger('esahub')
 PY2 = sys.version_info < (3, 0)
+DATETIME_FMT = '%Y-%m-%dT%H:%M:%S.000Z'
 
 if PY2:
     # Python2 imports
@@ -189,7 +191,7 @@ class Connection(object):
     def auto_resolve(self, url):
         # Detect server from url:
         # host = re.search('(.*)/search', url).group(1)
-        # auth = helpers.select(CONFIG['SERVERS'], first=True, host=host)
+        # auth = utils.select(CONFIG['SERVERS'], first=True, host=host)
         auth = {}
         for servername, server in CONFIG['SERVERS'].items():
             if server['host'] in url:
@@ -258,7 +260,7 @@ def _parse_page(url, first=False):
 
             filename = entry.find("./doc:str[@name='identifier']",
                                   prefixes).text
-            ingestiondate = helpers.to_date(
+            ingestiondate = utils.to_date(
                 entry.find("./doc:date[@name='ingestiondate']", prefixes).text,
                 output='date')
             try:
@@ -270,7 +272,7 @@ def _parse_page(url, first=False):
             except AttributeError:
                 coords = None
 
-            filesize = helpers.h2b(entry.find("./doc:str[@name='size']",
+            filesize = utils.h2b(entry.find("./doc:str[@name='size']",
                                               prefixes).text)
             preview_url = entry.find("./doc:link[@rel='icon']",
                                      prefixes).attrib['href']
@@ -402,6 +404,40 @@ def _parse_page_wrapper(*args, **kwargs):
             return result
 
 
+def _parse_time_parameter(value):
+    # Default ingestiontime query parameters
+    start = '1970-01-01T00:00:00.000Z'
+    end = 'NOW'
+    DATE_FMT = '%Y-%m-%dT00:00:00.000Z'
+
+    if value == 'today':
+        start = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+
+    elif value == 'yesterday':
+        start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
+                                     - DT.timedelta(1), DATE_FMT)
+        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+
+    elif value == 'midnight':
+        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+
+    elif value == '24h':
+        start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
+                                     - DT.timedelta(1), DATETIME_FMT)
+        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATETIME_FMT)
+
+    else:
+        parsed = utils.parse_datetime(value)
+        if not isinstance(parsed, tuple):
+            start = DT.datetime.strftime(parsed, DATETIME_FMT)
+            end = start
+        else:
+            start = DT.datetime.strftime(parsed[0], DATETIME_FMT)
+            end = DT.datetime.strftime(parsed[1], DATETIME_FMT)
+
+    return start, end
+
+
 def _build_query(query={}):
     """ Builds and returns the query URL given the command line input
     parameters.
@@ -436,24 +472,7 @@ def _build_query(query={}):
             end = query['to_time']
 
         elif key == 'time':
-            if val == 'today':
-                start = DT.datetime.strftime(DT.datetime.now(pytz.utc),
-                                             '%Y-%m-%dT00:00:00.000Z')
-            elif val == 'yesterday':
-                start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
-                                             - DT.timedelta(1),
-                                             '%Y-%m-%dT00:00:00.000Z')
-                end = DT.datetime.strftime(DT.datetime.now(pytz.utc),
-                                           '%Y-%m-%dT00:00:00.000Z')
-            elif val == 'midnight':
-                end = DT.datetime.strftime(DT.datetime.now(pytz.utc),
-                                           '%Y-%m-%dT00:00:00.000Z')
-            elif val == '24h':
-                start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
-                                             - DT.timedelta(1),
-                                             '%Y-%m-%dT%H:%M:%S.000Z')
-                start = DT.datetime.strftime(DT.datetime.now(pytz.utc),
-                                             '%Y-%m-%dT%H:%M:%S.000Z')
+            start, end = _parse_time_parameter(val)
 
         elif key == 'geo':
             # Build geospatial query:
@@ -565,7 +584,7 @@ def _download(url, destination, quiet=None, queue=None):
             size = int(response.info().getheaders("Content-Length")[0])
         else:
             size = int(response.headers.get("Content-Length"))
-        # size_str = helpers.b2h(size)
+        # size_str = utils.b2h(size)
         if queue is not None:
             queue.put((file_name, {'total': size,
                                    'desc': 'Downloading {name}'}))
@@ -585,17 +604,17 @@ def _download(url, destination, quiet=None, queue=None):
                     #     queue.put((file_name,
                     #                '{} Downloading ({} / {})'.format(
                     #                     file_name,
-                    #                     helpers.b2h(chunks_done*CHUNK),
+                    #                     utils.b2h(chunks_done*CHUNK),
                     #                     size_str)
                     #                ))
                     # else:
                     #     queue.put((file_name, '{} Downloading ({})'.format(
-                    #             file_name, helpers.b2h(chunks_done*CHUNK))))
+                    #             file_name, utils.b2h(chunks_done*CHUNK))))
         t_stop_download = time.time()
         download_size = os.path.getsize(destination)
         download_rate = download_size/(t_stop_download - t_start_download)
         msg = '{0} Downloaded ({1} at {2}/s)'.format(
-            file_name, helpers.b2h(download_size), helpers.b2h(download_rate)
+            file_name, utils.b2h(download_size), utils.b2h(download_rate)
         )
         if not quiet:
             logging.info(msg)
@@ -616,7 +635,7 @@ def _download(url, destination, quiet=None, queue=None):
 
 # def _get_file_list_wrapper(url):
 #     host = re.search('(.*)/search',url).group(1)
-#     server = helpers.select(list(CONFIG['SERVERS'].values()), host=host)
+#     server = utils.select(list(CONFIG['SERVERS'].values()), host=host)
 #     if type(server) is list:
 #         server = server[0]
 #     Connection.login(**server)
@@ -654,7 +673,7 @@ def _auto_detect_server_from_query(query, available_only=False):
             servers = CONFIG['SATELLITES'][sat]['source']
 
     if 'mission' in query:
-        sats = helpers.select(CONFIG['SATELLITES'], platform=query['mission'])
+        sats = utils.select(CONFIG['SATELLITES'], platform=query['mission'])
         if len(sats) > 0:
             ll = [source for sat in sats.values() for source in sat['source']]
             servers = list(OrderedDict.fromkeys(ll))
@@ -930,7 +949,7 @@ def download(product, queue=None, stopqueue=True):
     else:
         fdata = search({'identifier': os.path.splitext(product)[0]+'*'})[0]
 
-    satellite = helpers.get_satellite(fdata['filename'])
+    satellite = utils.get_satellite(fdata['filename'])
     ext = CONFIG['SATELLITES'][satellite]['ext']
     # suffix = CONFIG['SATELLITES'][satellite]['suffix']
     file_name = fdata['filename'] + ext
@@ -1157,7 +1176,7 @@ def redownload(local_file_list):
                          for fpath in local_files]
         chunksize = 10
         remote_file_list = []
-        for products in helpers.chunks(product_names, chunksize):
+        for products in utils.chunks(product_names, chunksize):
             query_string = '({})'.format(
                     ' OR '.join(['identifier:{}'.format(product)
                                  for product in products])

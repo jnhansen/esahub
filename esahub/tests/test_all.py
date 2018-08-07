@@ -1,3 +1,4 @@
+from esahub import scihub, geo, utils, checksum, check, main
 import unittest
 import contextlib
 import logging
@@ -9,7 +10,6 @@ import sys
 import subprocess
 from esahub.tests import config as test_config
 from esahub import config
-from esahub import geo, helpers, scihub, checksum, check, main
 
 logger = logging.getLogger('esahub')
 
@@ -24,7 +24,7 @@ else:
         @contextlib.contextmanager
         def subTest(self, msg='', **params):
             """Mock subTest method so no exception is raised under Python2."""
-            helpers.eprint('subTest:', msg, params)
+            utils.eprint('subTest:', msg, params)
             yield
             return
 
@@ -163,7 +163,7 @@ class ScihubTestCase(TestCase):
                 self.assertEqual(response.code, 200)
 
     def test_md5_from_file(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the md5 sum computed from the local file is equal
@@ -344,7 +344,7 @@ class ScihubDownloadTestCase(TestCase):
         #
         # Assert that all downloads were successful.
         #
-        local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
+        local_files = utils.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         local_files_identifiers = [os.path.splitext(os.path.split(_)[1])[0]
                                    for _ in local_files]
         for f in file_list:
@@ -352,19 +352,19 @@ class ScihubDownloadTestCase(TestCase):
         for f in local_files:
             with self.subTest(file=f):
                 _, healthy, msg = check.check_file(f, mode='file')
-                helpers.eprint(msg)
+                utils.eprint(msg)
                 self.assertTrue(healthy)
 
     def test_redownload(self):
         test_config.copy_corrupt_data()
-        local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
+        local_files = utils.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         scihub.redownload(local_files)
-        new_local_files = helpers.ls(config.CONFIG['GENERAL']['DATA_DIR'])
+        new_local_files = utils.ls(config.CONFIG['GENERAL']['DATA_DIR'])
         self.assertEqual(set(local_files), set(new_local_files))
         for f in local_files:
             with self.subTest(file=f):
                 _, healthy, msg = check.check_file(f, mode='file')
-                helpers.eprint(msg)
+                utils.eprint(msg)
                 self.assertTrue(healthy)
 
 
@@ -384,7 +384,7 @@ class CheckTestCase(TestCase):
         test_config.clear_test_data()
 
     def test_check_file_md5_healthy(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files check out in `md5` mode.
@@ -397,7 +397,7 @@ class CheckTestCase(TestCase):
                     self.fail('File check failed: {}'.format(e))
 
     def test_check_file_zip_healthy(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files check out in `file` mode.
@@ -412,7 +412,7 @@ class CheckTestCase(TestCase):
     def test_check_file_md5_corrupt(self):
         test_config.clear_test_data()
         test_config.copy_corrupt_data()
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files are detected as corrupt in `md5` mode.
@@ -427,7 +427,7 @@ class CheckTestCase(TestCase):
     def test_check_file_zip_corrupt(self):
         test_config.clear_test_data()
         test_config.copy_corrupt_data()
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the files are detected as corrupt in `file` mode.
@@ -456,14 +456,14 @@ class ChecksumTestCase(TestCase):
         test_config.clear_test_data()
 
     def test_md5(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the md5 checksum returned by checksum.md5() is
                 # equal to the md5 sum returned by bash md5 or md5sum tool.
                 #
                 for exe in ['md5', 'md5sum']:
-                    if helpers._which(exe) is not None:
+                    if utils._which(exe) is not None:
                         bash_output = subprocess.check_output([exe, f])
                         if not PY2:
                             bash_output = bash_output.decode()
@@ -475,7 +475,7 @@ class ChecksumTestCase(TestCase):
                 )
 
     def test_etag_small_files(self):
-        for f in helpers.ls(config.CONFIG['GENERAL']['DATA_DIR']):
+        for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
             with self.subTest(file=f):
                 #
                 # Assert that the computed etag is equal to the md5
@@ -535,9 +535,9 @@ class MainTestCase(TestCase):
 
     def test_doctor(self):
         test_config.copy_corrupt_data()
-        corrupt_files = helpers.ls(test_config.TEST_DATA_DIR_CORRUPT,
+        corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
                                    path=False)
-        healthy_files = helpers.ls(test_config.TEST_DATA_DIR_ORIGINAL,
+        healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
                                    path=False)
         main.doctor()
         #
@@ -555,9 +555,9 @@ class MainTestCase(TestCase):
 
     def test_doctor_delete(self):
         test_config.copy_corrupt_data()
-        corrupt_files = helpers.ls(test_config.TEST_DATA_DIR_CORRUPT,
+        corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
                                    path=False)
-        healthy_files = helpers.ls(test_config.TEST_DATA_DIR_ORIGINAL,
+        healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
                                    path=False)
         main.doctor(delete=True)
         #
@@ -576,9 +576,9 @@ class MainTestCase(TestCase):
 
     def test_doctor_repair(self):
         test_config.copy_corrupt_data()
-        corrupt_files = helpers.ls(test_config.TEST_DATA_DIR_CORRUPT,
+        corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
                                    path=False)
-        # healthy_files = helpers.ls(test_config.TEST_DATA_DIR_ORIGINAL,
+        # healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
         #                            path=False)
         main.doctor(repair=True)
 
@@ -589,19 +589,49 @@ class MainTestCase(TestCase):
                 # Assert that each corrupt file has been repaired.
                 #
                 _, healthy, msg = check.check_file(repaired_f, mode='file')
-                helpers.eprint(msg)
+                utils.eprint(msg)
                 self.assertTrue(healthy)
 
 
 # -----------------------------------------------------------------------------
-# HELPERS
+# utils
 # -----------------------------------------------------------------------------
 
-# class HelpersTestCase(TestCase):
-#
-#     def setUp(self):
-#         test_config.set_test_config()
-#         test_config.copy_test_data()
-#
-#     def tearDown(self):
-#         test_config.clear_all()
+class UtilsTestCase(TestCase):
+
+    def setUp(self):
+        test_config.set_test_config()
+        # test_config.copy_test_data()
+
+    def tearDown(self):
+        # test_config.clear_all()
+        pass
+    
+    def test_parse_datetime(self):
+        _dt = DT.datetime
+        dates = [
+            ('Sep 5, 2016', (_dt(2016, 9, 5, 0, 0, 0),
+                             _dt(2016, 9, 6, 0, 0, 0))),
+            ('5 Sep 2016', (_dt(2016, 9, 5, 0, 0, 0),
+                            _dt(2016, 9, 6, 0, 0, 0))),
+            ('06/1998', (_dt(1998, 6, 1, 0, 0, 0),
+                         _dt(1998, 7, 1, 0, 0, 0))),
+            ('Jan 2018 to Oct 2018', (_dt(2018, 1, 1, 0, 0, 0),
+                                      _dt(2018, 11, 1, 0, 0, 0))),
+            ('1 Jan 2018 to 30 Sep 2018', (_dt(2018, 1, 1, 0, 0, 0),
+                                           _dt(2018, 10, 1, 0, 0, 0))),
+            ('12/2017', (_dt(2017, 12, 1, 0, 0, 0),
+                         _dt(2018, 1, 1, 0, 0, 0))),
+            ('2017/12', (_dt(2017, 12, 1, 0, 0, 0),
+                         _dt(2018, 1, 1, 0, 0, 0))),
+            ('2017/12 to 2018/12', (_dt(2017, 12, 1, 0, 0, 0),
+                                    _dt(2019, 1, 1, 0, 0, 0))),
+            ('Jan 1, 2017, Jan 1, 2018', (_dt(2017, 1, 1, 0, 0, 0),
+                                          _dt(2018, 1, 2, 0, 0, 0))),
+        ]
+        for date_str, date_obj in dates:
+            with self.subTest(date_str=date_str):
+                self.assertEqual(
+                    utils.parse_datetime(date_str),
+                    date_obj
+                )
