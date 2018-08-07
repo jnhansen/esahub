@@ -87,7 +87,7 @@ def check_file(full_file_path, mode):
                 healthy = True
         elif ext == '.nc':
             if not NETCDF_INSTALLED:
-                raise ImportError("Need to install `netCDF4` to use this "
+                raise ImportError("`netCDF4` must be installed to use this "
                                   "feature!")
             try:
                 nc_ref = Dataset(full_file_path, 'r')

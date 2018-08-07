@@ -116,16 +116,18 @@ scihub.download_many(files)
 
 ## <a name="dependencies"></a>Dependencies
 
-### Python packages
+### Required
 * `pyyaml`
 * `numpy`
 * `lxml`
-* `pyproj`
 * `shapely`
-* `netCDF4`
 * `python-dateutil`
 * `pytz`
 * `tqdm`
+
+### Optional
+* `pyproj`
+* `netCDF4`
 
 ### Libraries
 * `libgeos_c`
