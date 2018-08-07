@@ -211,6 +211,23 @@ class ScihubSearchTestCase(TestCase):
         self.assertEqual(html.count(b'<entry>'),
                          config.CONFIG['GENERAL']['ENTRIES'])
 
+    def test_orbit_query(self):
+        for search_str, orbit in [
+            ('ASC', 'ASCENDING'),
+            ('DESC', 'DESCENDING')
+        ]:
+            query = {'orbit': search_str}
+            result = scihub.search(query, limit=20)
+            for prod in result:
+                self.assertEqual(prod['orbit_direction'], orbit)
+
+    def test_id_query(self):
+        prod = scihub.search({}, limit=5)[-1]
+        query = {'id': prod['title']}
+        result = scihub.search(query)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], prod)        
+
     def test_queries(self):
         queries = [
             # (name, query)

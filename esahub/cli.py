@@ -84,11 +84,17 @@ def parse_cli_options(args=None):
             choices=list(CONFIG['SATELLITES'].keys()),
             help='Satellite')
         p.add_argument(
-            '--mission',
+            '-m', '--mission',
             help="Select the mission (Sentinel-1, Sentinel-2, Sentinel-3).")
         p.add_argument(
             '--type',
             help="Select products matching specified product type (e.g. GRD).")
+        p.add_argument(
+            '--orbit',
+            help="Orbit direction (ASC, DESC).")
+        p.add_argument(
+            '--id',
+            help="Product identifier, may include wildcards (*).")
         p.add_argument(
             '--server', choices=list(CONFIG['SERVERS'].keys()),
             help="Specify the dowload server.")
@@ -121,19 +127,19 @@ def parse_cli_options(args=None):
             '--force', action='store_true',
             help='Force download even if index existing.')
         p.add_argument(
-            '--in', help='Read download list from file.')
+            '-i', '--in', help='Read download list from file.')
 
     # ARGUMENTS FOR LS ONLY
     # -------------------------------------------------------------------------
     for p in (parser_ls,):
         p.add_argument(
-            '--out', help='Write list to file.')
+            '-o', '--out', help='Write list to file.')
 
     # ARGUMENTS FOR DOCTOR ONLY
     # -------------------------------------------------------------------------
     for p in (parser_doctor,):
         p.add_argument(
-            '-m', '--mode',
+            '--mode',
             help="Specify the mode for file checking. Options include:\n"
                  "  file - check if archives are valid zip or "
                  "netcdf files (very fast).\n"
@@ -169,11 +175,7 @@ def set_config(args):
     # if not_none(args, 'quiet'):
     #     CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
-        CONFIG['GENERAL']['TMP_DIR'] = args['dir']
-    if not_none(args, 'target'):
-        CONFIG['GENERAL']['DATA_DIR'] = args['target']
-    if not_none(args, 'output'):
-        CONFIG['GENERAL']['SOLR_INDEX_FILE'] = args['output']
+        CONFIG['GENERAL']['DAT_DIR'] = args['dir']
     if not_none(args, 'email'):
         CONFIG['GENERAL']['SEND_EMAIL'] = args['email']
     if not_none(args, 'log'):
@@ -195,6 +197,10 @@ def set_config(args):
         CONFIG['GENERAL']['QUERY']['time'] = args['time']
     if not_none(args, 'type'):
         CONFIG['GENERAL']['QUERY']['type'] = args['type']
+    if not_none(args, 'orbit'):
+        CONFIG['GENERAL']['QUERY']['orbit'] = args['orbit']
+    if not_none(args, 'id'):
+        CONFIG['GENERAL']['QUERY']['id'] = args['id']
     if not_none(args, 'query'):
         CONFIG['GENERAL']['QUERY']['query'] = args['query']
 

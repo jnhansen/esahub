@@ -276,6 +276,10 @@ def _parse_page(url, first=False):
                                               prefixes).text)
             preview_url = entry.find("./doc:link[@rel='icon']",
                                      prefixes).attrib['href']
+            rel_orbit = int(entry.find("doc:int[@name='relativeorbitnumber']",
+                                       prefixes).text)
+            orbit_dir = entry.find("doc:str[@name='orbitdirection']",
+                                   prefixes).text.upper()
             file_dict = {
                 # 'position'  : file_counter,
                 'title': entry.find('doc:title', prefixes).text,
@@ -286,7 +290,9 @@ def _parse_page(url, first=False):
                 'filename': filename,
                 'size': filesize,
                 'ingestiondate': ingestiondate,
-                'coords': coords
+                'coords': coords,
+                'orbit_direction': orbit_dir,
+                'rel_orbit': rel_orbit
             }
             file_list.append(file_dict)
 
@@ -492,10 +498,23 @@ def _build_query(query={}):
                     )
 
         elif key == 'type':
-            query_list.append('producttype:{0}'.format(query['type']))
+            query_list.append('producttype:{}'.format(query['type']))
+
+        elif key == 'orbit':
+            if val.upper() in ['ASC', 'ASCENDING']:
+                orbit = 'ASCENDING'
+            elif val.upper() in ['DESC', 'DESCENDING']:
+                orbit = 'DESCENDING'
+            else:
+                raise ValueError("Invalid value for `orbit`: '{}'"
+                                 .format(val))
+            query_list.append('orbitdirection:{}'.format(orbit))
+
+        elif key == 'id':
+            query_list.append('identifier:{}'.format(query['id']))
 
         elif key == 'query':
-            query_list.append('{0}'.format(query['query']))
+            query_list.append('{}'.format(query['query']))
 
         elif key == 'sort':
             sort_string = '&orderby={} {}'.format(*query['sort'])
