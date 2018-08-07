@@ -16,8 +16,6 @@ in `config.yaml`.
 
 You should overwrite the required settings in your `~/.esahub.conf`, especially:
 * `GENERAL.DATA_DIR`
-* `GENERAL.LOG_FILE`
-* `GENERAL.EMAIL_REPORT_RECIPIENTS`
 
 The full range of Copernicus data servers are supported, including:
 * `https://scihub.copernicus.eu/dhus`
@@ -51,7 +49,7 @@ $ esahub [cmd] [args] ...
 |:-------------|:-----------------------------------------------------------------------------------
 | `ls`         | Queries SciHub for archives matching the specified query parameters. Prints the total number of files and data size.
 | `get`        | Queries SciHub like `ls`, but then downloads the files.
-| `doctor`     | Checks local `.zip` archives for consistency, either by validating the zip format or by comparing to the MD5 checksum from SciHub. Allows to either delete or repair broken files.
+| `doctor`     | Checks local satellite products for consistency, either by validating the zip/NetCDF format or by comparing to the MD5 checksum from SciHub. Allows to either delete or repair broken files.
 
 
 ### Options
