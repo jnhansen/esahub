@@ -1,11 +1,14 @@
 # coding=utf-8
 """ Helper module for geospatial tasks.
 """
-import pyproj
-# from shapely.geometry import shape
 import shapely.ops
 from shapely.wkt import loads as wkt_loads
 from functools import partial
+try:
+    import pyproj
+    PYPROJ_INSTALLED = True
+except ImportError:
+    PYPROJ_INSTALLED = False
 
 
 def gml_to_polygon(footprint):
@@ -108,13 +111,8 @@ def polygon_area(polygon):
     float
         The area of the polygon in square kilometers.
     """
-    # lon,lat = _polygon_to_lonlat(polygon)
-    # pa = Proj('+proj=aea +lat_1={} +lat_2={} +lat_0={} +lon_0={}'.format(
-    #     min(lat),max(lat),np.mean(lat),np.mean(lon)
-    # ))
-    # x, y = pa(lon, lat)
-    # cop = {"type": "Polygon", "coordinates": [zip(x, y)]}
-    # return shape(cop).area / 1e6
+    if not PYPROJ_INSTALLED:
+        raise ImportError("`pyproj` must be installed to use this feature!")
     poly = wkt_loads(polygon)
     poly_area = shapely.ops.transform(
         partial(

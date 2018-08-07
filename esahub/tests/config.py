@@ -1,4 +1,4 @@
-from esahub import config, helpers, scihub
+from esahub import config, utils, scihub
 import os
 import sys
 import shutil
@@ -75,14 +75,14 @@ def set_test_config():
 
 
 def copy_test_data():
-    for f in helpers.ls(TEST_DATA_DIR_ORIGINAL):
+    for f in utils.ls(TEST_DATA_DIR_ORIGINAL):
         target = os.path.join(config.CONFIG['GENERAL']['DATA_DIR'],
                               os.path.split(f)[1])
         shutil.copy2(f, target)
 
 
 def copy_corrupt_data():
-    for f in helpers.ls(TEST_DATA_DIR_CORRUPT):
+    for f in utils.ls(TEST_DATA_DIR_CORRUPT):
         target = os.path.join(config.CONFIG['GENERAL']['DATA_DIR'],
                               os.path.split(f)[1])
         shutil.copy2(f, target)

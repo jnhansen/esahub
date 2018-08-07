@@ -10,7 +10,7 @@ import json
 import multiprocessing
 from functools import partial
 from .config import CONFIG
-from . import scihub, check, tty, helpers
+from . import scihub, check, tty, utils
 
 logger = logging.getLogger('esahub')
 PY2 = sys.version_info < (3, 0)
@@ -23,7 +23,7 @@ def list_local_archives():
     #
     # Collect a list of all files.
     #
-    return helpers.ls(CONFIG['GENERAL']['DATA_DIR'])
+    return utils.ls(CONFIG['GENERAL']['DATA_DIR'])
 
 
 # -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ def get(query=None, limit=None):
 
     msg = 'Preparing {0:d} files ({1}) for download into {2} ...'.format(
         len(file_list),
-        helpers.b2h(size),
+        utils.b2h(size),
         CONFIG['GENERAL']['DATA_DIR']
     )
     logging.info(msg)
@@ -88,11 +88,11 @@ def ls(query=None, quiet=False):
         size += f['size']
     if not quiet:
         msg = 'Found {0:d} files ({1}).'.format(len(file_list),
-                                                helpers.b2h(size))
+                                                utils.b2h(size))
         logging.info(msg)
         tty.result(msg)
         for f in file_list:
-            msg = '{:>8} {}'.format(helpers.b2h(f['size']), f['filename'])
+            msg = '{:>8} {}'.format(utils.b2h(f['size']), f['filename'])
             # tty.update(f['filename'],msg)
             logging.info(f['filename'])
 
@@ -163,7 +163,7 @@ def _product_file(f):
         product = os.path.splitext(product)[0]
     else:
         product = os.path.splitext(product)[0]
-        sat = helpers.get_satellite(product)
+        sat = utils.get_satellite(product)
         if sat in CONFIG['SATELLITES']:
             product += CONFIG['SATELLITES'][sat]['ext']
         else:

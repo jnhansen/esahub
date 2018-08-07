@@ -44,15 +44,15 @@ def parse_cli_options(args=None):
 
     parser_ls = subparsers.add_parser(
         'ls', description='Query satellite data archives for size.',
-        help="""Investigate the amount of available data.\n"""
-        """  Type esahub ls --help for details.""",
+        help="Investigate the amount of available data.\n"
+             "  Type esahub ls --help for details.",
         formatter_class=lambda prog: argparse.RawTextHelpFormatter(
                 prog, max_help_position=40))
 
     parser_doctor = subparsers.add_parser(
         'doctor', description='Check local data for corruption.',
-        help="""Check already downloaded archives for consistency.\n"""
-        """  Type esahub doctor --help for details.""",
+        help="Check already downloaded archives for consistency.\n"
+             "  Type esahub doctor --help for details.",
         formatter_class=lambda prog: argparse.RawTextHelpFormatter(
                 prog, max_help_position=40))
 
@@ -94,29 +94,23 @@ def parse_cli_options(args=None):
             help="Specify the dowload server.")
         p.add_argument(
             '-g', '--geo', action='append',
-            help="""Specify geospatial location for intersection as point """
-                 """or polygon. You can add multiple options.\n"""
-                 """  Examples: 'POINT(-6.26 53.35)' (Dublin) \n"""
-                 """  'POLYGON((-25.1 46.8,-5.25 46.8,-5.25 57.4,"""
-                 """-25.1 57.4,-25.1 46.8))' (Real Ireland)""")
+            help="Specify geospatial location for intersection as point "
+                 "or polygon. You can add multiple options.\n"
+                 "  Examples: 'POINT(-6.26 53.35)' (Dublin) \n"
+                 "  'POLYGON((-25.1 46.8,-5.25 46.8,-5.25 57.4,"
+                 "-25.1 57.4,-25.1 46.8))' (Real Ireland)")
         p.add_argument(
             '--location', action='append',
             choices=[l for l, value in CONFIG['LOCATIONS'].items()],
-            help="""Specify location semantically as defined in config """
-            """file. You can add multiple options.\n"""
-            """  Examples: 'Ireland_Mace_Head'""")
+            help="Specify location semantically as defined in config "
+                 "file. You can add multiple options.\n"
+                 "  Examples: 'Ireland_Mace_Head'")
         p.add_argument(
-            '-t', '--time', choices=['today', 'yesterday', '24h', 'midnight'],
-            help="""Shortcuts for specifying time intervals. """
-                 """Options include:\n"""
-                 """  today|yesterday|24h|midnight""")
-        p.add_argument(
-            '-A', '--from_time',
-            help="""Select data after timestamp FROM. """
-                 """Default is 1970-01-01T00:00:00.000Z.""")
-        p.add_argument(
-            '-B', '--to_time',
-            help="Select data before timestamp TO. Default is NOW.")
+            '-t', '--time'
+            help="Shortcuts for specifying time intervals. "
+                 "Pass any date or date range in string format.\n"
+                 "Special options include:\n"
+                 "  today|yesterday|24h|midnight")
         p.add_argument(
             '-q', '--query', help='Specify custom query.')
 
@@ -140,11 +134,11 @@ def parse_cli_options(args=None):
     for p in (parser_doctor,):
         p.add_argument(
             '-m', '--mode',
-            help="""Specify the mode for file checking. Options include:\n"""
-                 """  file - check if archives are valid zip or """
-                 """netcdf files (very fast).\n"""
-                 """  md5 - check if archives match MD5 sum provided online """
-                 """(can be slow).""")
+            help="Specify the mode for file checking. Options include:\n"
+                 "  file - check if archives are valid zip or "
+                 "netcdf files (very fast).\n"
+                 "  md5 - check if archives match MD5 sum provided online "
+                 "(can be slow).")
         p.add_argument(
             '--repair', action='store_true',
             help='Redownload corrupt files.')
@@ -199,10 +193,6 @@ def set_config(args):
         CONFIG['GENERAL']['QUERY']['location'] = args['location']
     if not_none(args, 'time'):
         CONFIG['GENERAL']['QUERY']['time'] = args['time']
-    if not_none(args, 'from_time'):
-        CONFIG['GENERAL']['QUERY']['from_time'] = args['from_time']
-    if not_none(args, 'to_time'):
-        CONFIG['GENERAL']['QUERY']['to_time'] = args['to_time']
     if not_none(args, 'type'):
         CONFIG['GENERAL']['QUERY']['type'] = args['type']
     if not_none(args, 'query'):

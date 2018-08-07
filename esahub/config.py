@@ -1,7 +1,5 @@
 import yaml
 import os
-# from functools import partial
-# from . import helpers, geo
 
 SETTINGS_FILES = [
     os.path.join(os.path.dirname(__file__), 'config.yaml'),

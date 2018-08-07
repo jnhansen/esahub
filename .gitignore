@@ -1,5 +1,11 @@
-*.pyc
+**/*.pyc
 /dist/
+/build/
 /*.egg-info
 /*.egg
 /*.eggs
+/.tox
+/.vscode
+/.pytest_cache
+/.cache
+/.ipynb_checkpoints
