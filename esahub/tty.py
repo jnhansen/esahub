@@ -138,21 +138,21 @@ END = '\033[0m'
 
 
 def error(message):
-    if False and sys.stdout.isatty() and not CONFIG['GENERAL']['USE_GUI']:
+    if False and sys.stdout.isatty():
         return '{0}{1}{2}{3}'.format(BOLD, RED, message, END)
     else:
         return message
 
 
 def warn(message):
-    if False and sys.stdout.isatty() and not CONFIG['GENERAL']['USE_GUI']:
+    if False and sys.stdout.isatty():
         return '{0}{1}{2}{3}'.format(BOLD, YELLOW, message, END)
     else:
         return message
 
 
 def success(message):
-    if False and sys.stdout.isatty() and not CONFIG['GENERAL']['USE_GUI']:
+    if False and sys.stdout.isatty():
         return '{0}{1}{2}{3}'.format(BOLD, GREEN, message, END)
     else:
         return message

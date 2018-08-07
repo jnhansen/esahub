@@ -67,8 +67,6 @@ def parse_cli_options(args=None):
                        help='Enable debugging.')
         p.add_argument('--email', action='store_true',
                        help='Send an email report.')
-        p.add_argument('--gui', action='store_true',
-                       help='Use GUI.')
 
     # ARGUMENTS FOR GET AND DOCTOR
     # -------------------------------------------------------------------------
@@ -180,8 +178,6 @@ def set_config(args):
         CONFIG['GENERAL']['SEND_EMAIL'] = args['email']
     if not_none(args, 'log'):
         CONFIG['GENERAL']['LOGGING'] = args['log']
-    if not_none(args, 'gui'):
-        CONFIG['GENERAL']['USE_GUI'] = args['gui']
 
     if not_none(args, 'sat'):
         CONFIG['GENERAL']['QUERY']['satellite'] = args['sat']
@@ -260,8 +256,6 @@ def main():
         a = time.time()
 
         tty.init()
-        if CONFIG['GENERAL']['USE_GUI']:
-            tty.header(program)
 
         if cmd == 'doctor':
             main.doctor(delete=args['delete'], repair=args['repair'])
@@ -284,11 +278,7 @@ def main():
             len(CONFIG['GENERAL']['EMAIL_REPORT_RECIPIENTS']):
         main.email()
 
-    if CONFIG['GENERAL']['USE_GUI']:
-        try:
-            tty.wait_for_quit()
-        except KeyboardInterrupt:
-            shutdown()
+    shutdown()
 
 
 if __name__ == '__main__':

@@ -19,8 +19,6 @@ GENERAL:
       -
 
   # -------------------------------------------------------------------------------------------- #
-  # Whether to use a curses GUI (experimental)
-  USE_GUI: No
   # Whether to suppress terminal output
   QUIET: No
   # Whether to download preview images if available

@@ -74,7 +74,6 @@ $ esahub [cmd] [args] ...
 | <code>--delete</code>                     | `doctor`      | delete corrupt files
 | <code>--repair</code>                     | `doctor`      | redownload corrupt files
 | <code>--email</code>                      | `all`         | send email report
-| <code>--gui</code>                        | `all`         | use the GUI (by default runs in background)
 
 
 ##### Datetime parsing
