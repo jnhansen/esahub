@@ -460,7 +460,7 @@ def _get_server_from_url(url):
         if cfg['host'] in url:
             return servername
 
-    raise Exception(f"Could not determine server for {url}!")
+    raise Exception("Could not determine server for {url}!".format(url=url))
 
 
 def _get_host_from_url(url):
