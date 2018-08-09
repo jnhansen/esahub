@@ -9,7 +9,7 @@ NOBAR_FORMAT = "{desc}"
 STATUS_RATE_FORMAT = "{desc} {n_fmt} [{elapsed}, {rate_fmt}]"
 STATUS_BAR_FORMAT = "{desc} {percentage:3.0f}% |{bar}| [{elapsed}]"
 STATUS_NOBAR_FORMAT = "{desc} [{elapsed}]"
-FAKE_TOTAL = 9_000_000_000_000
+FAKE_TOTAL = 9000000000000
 
 
 def shorten(text, maxlen=30):
