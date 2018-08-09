@@ -304,7 +304,7 @@ class ScihubSearchTestCase(TestCase):
                     # requested location.
                     #
                     self.assertTrue(geo.intersect(f['coords'], ref_coords,
-                                                  tolerance=0.1))
+                                                  tolerance=0.2))
 
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-3'}
