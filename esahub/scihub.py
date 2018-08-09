@@ -70,7 +70,8 @@ class SessionManager():
         closer_tasks = []
         for server, session in self._sessions.items():
             closer_tasks.append(session.close())
-        loop.run_until_complete(asyncio.wait(closer_tasks))
+        if len(closer_tasks) > 0:
+            loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
 QUERY = SessionManager(concurrent=20)
