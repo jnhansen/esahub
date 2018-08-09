@@ -7,8 +7,7 @@ import logging
 import sys
 import os
 import json
-import multiprocessing
-from functools import partial
+import asyncio
 from .config import CONFIG
 from . import scihub, check, tty, utils
 
@@ -59,15 +58,16 @@ def get(query=None, limit=None):
     file_list = query_file_list(query, limit=limit)
     size = sum(f['size'] for f in file_list)
 
-    msg = 'Preparing {0:d} files ({1}) for download into {2} ...'.format(
+    msg = 'Downloading {0:d} files ({1}) into {2} ...'.format(
         len(file_list),
         utils.b2h(size),
         CONFIG['GENERAL']['DATA_DIR']
     )
     logging.info(msg)
-    tty.status(msg)
+    tty.screen.status(desc=msg, total=size, mode='bar', reset=True,
+                      unit='B', scale=True)
 
-    scihub.download_many(file_list)
+    scihub.download(file_list)
 
 
 def ls(query=None, quiet=False):
@@ -80,6 +80,7 @@ def ls(query=None, quiet=False):
     quiet : bool, optional
         Whether to suppress console output.
     """
+    tty.screen.status('Searching ...', mode='static')
     if query is None:
         query = CONFIG['GENERAL']['QUERY']
     file_list = scihub.search(query)
@@ -90,7 +91,7 @@ def ls(query=None, quiet=False):
         msg = 'Found {0:d} files ({1}).'.format(len(file_list),
                                                 utils.b2h(size))
         logging.info(msg)
-        tty.result(msg)
+        tty.screen.result(msg)
         for f in file_list:
             msg = '{:>8} {}'.format(utils.b2h(f['size']), f['filename'])
             # tty.update(f['filename'],msg)
@@ -118,43 +119,55 @@ def doctor(delete=False, repair=False):
     reapir : bool, optional
         Whether to attempt a redownload of corrupt files (default: False)
     """
-    check._init_bad_file_counter()
+    # check._init_bad_file_counter()
     all_files = list_local_archives()
     msg = 'Checking {:d} files for consistency (mode: {}).'.format(
             len(all_files), CONFIG['GENERAL']['CHECK_MODE'])
     logging.info(msg)
-    tty.status(msg)
+    # tty.screen.status(desc=msg, reset=True, bar=True, unit='', scale=False)
 
     #
     # Check every file in the list.
     #
-    pool = multiprocessing.Pool(processes=CONFIG['GENERAL']['N_PROC'])
-    partial_check_file = partial(check.check_file,
-                                 mode=CONFIG['GENERAL']['CHECK_MODE'])
+    tasks = []
     for f in all_files:
-        pool.apply_async(partial_check_file, args=(f,),
-                         callback=check._register_bad_file)
-    pool.close()
-    pool.join()
-
-    msg = '{0:d}/{1:d} files corrupt.'.format(check.BAD_FILE_COUNTER,
+        tasks.append(
+            check._check_file(f, CONFIG['GENERAL']['CHECK_MODE'])
+        )
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(asyncio.gather(*tasks))
+    bad_files = [status[0] for status in result if status[1] is False]
+    n_bad_files = len(bad_files)
+    msg = '{0:d}/{1:d} files corrupt.'.format(n_bad_files,
                                               len(all_files))
     logging.info(msg)
-    tty.result(msg)
+    tty.screen.result(msg)
 
     if repair:
-        tty.status('Redownloading {} corrupt files ...'.format(
-                check.BAD_FILE_COUNTER))
-        scihub.redownload(check.BAD_FILES)
+        # tty.screen.status(desc='Redownloading {} corrupt files ...'
+        #                        .format(check.BAD_FILE_COUNTER),
+        #                   total=check.BAD_FILE_COUNTER,
+        #                   bar=True, unit='', scale=False,
+        #                   reset=True)
+
+        scihub.redownload(bad_files)
 
     elif delete:
-        tty.status('Deleting {} corrupt files ...'.format(
-                check.BAD_FILE_COUNTER))
-        for f in check.BAD_FILES:
+        # tty.screen.status(desc='Deleting {} corrupt files ...'
+        #                        .format(check.BAD_FILE_COUNTER),
+        #                   total=check.BAD_FILE_COUNTER,
+        #                   bar=True, unit='', scale=False,
+        #                   reset=True)
+
+        for f in bad_files:
             os.remove(f)
-        msg = 'Deleted {} corrupt files!'.format(check.BAD_FILE_COUNTER)
+            # tty.screen.status(progress=1)
+
+        msg = 'Deleted {} corrupt files!'.format(n_bad_files)
         logging.info(msg)
-        tty.result(msg)
+        tty.screen.result(msg)
+
+    return result
 
 
 def _product_file(f):

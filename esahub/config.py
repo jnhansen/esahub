@@ -16,6 +16,8 @@ def load(fname):
     if os.path.isfile(fname):
         with open(fname, 'r') as fid:
             CONFIG.update(yaml.load(fid))
+    CONFIG['GENERAL']['DATA_DIR'] = \
+        os.path.expanduser(CONFIG['GENERAL']['DATA_DIR'])
 
 
 for f in SETTINGS_FILES:

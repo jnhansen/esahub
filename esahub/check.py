@@ -24,16 +24,9 @@ except AttributeError:
     ZIP_ERROR = zipfile.BadZipfile
 
 
-# CHECKING FILE CONSISTENY
 # -----------------------------------------------------------------------------
-FILE_COUNTER = 0
-BAD_FILE_COUNTER = 0
-BAD_FILES = []
-
-
 # FILE LISTING
 # -----------------------------------------------------------------------------
-
 def local_ls():
     #
     # Collect a list of all files.
@@ -48,6 +41,10 @@ def local_ls():
 
 
 def check_file(full_file_path, mode):
+    return scihub.block(_check_file, full_file_path, mode)
+
+
+async def _check_file(full_file_path, mode):
     """ Check an already downloaded file for consistency.
 
     Parameters
@@ -108,7 +105,7 @@ def check_file(full_file_path, mode):
         #
         # Check the md5sum against SciHub.
         #
-        remote_md5 = scihub.md5(product=full_file_path)
+        remote_md5 = await scihub._md5(product=full_file_path)
         if remote_md5 is False:
             message = '{} {}'.format(tty.error('MD5 NOT FOUND:'),
                                      full_file_path)
@@ -123,28 +120,6 @@ def check_file(full_file_path, mode):
                                          full_file_path)
                 healthy = False
 
-    return (full_file_path, healthy, message)
+    result = (full_file_path, healthy, message)
 
-
-def _init_bad_file_counter():
-    global FILE_COUNTER
-    global BAD_FILE_COUNTER
-    global BAD_FILES
-    FILE_COUNTER = 0
-    BAD_FILE_COUNTER = 0
-    BAD_FILES = []
-
-
-def _register_bad_file(status):
-    file_path, healthy, message = status
-    global FILE_COUNTER
-    global BAD_FILE_COUNTER
-    global BAD_FILES
-    FILE_COUNTER += 1
-    if not healthy:
-        BAD_FILE_COUNTER += 1
-        BAD_FILES.append(file_path)
-
-    tty.update(os.path.split(file_path)[1],
-               {'msg': message})
-    logging.info(message)
+    return result

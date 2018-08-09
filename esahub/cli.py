@@ -61,6 +61,8 @@ def parse_cli_options(args=None):
     for p in (parser_get, parser_ls, parser_doctor):
         p.add_argument('-N', '--nproc', type=int,
                        help='Number of simultaneous processes/downloads.')
+        p.add_argument('--quiet', action='store_true',
+                       help='Suppress terminal output.')
         p.add_argument('--log', action='store_true',
                        help='Write a log file.')
         p.add_argument('--debug', action='store_true',
@@ -110,7 +112,7 @@ def parse_cli_options(args=None):
                  "file. You can add multiple options.\n"
                  "  Examples: 'Ireland_Mace_Head'")
         p.add_argument(
-            '-t', '--time'
+            '-t', '--time',
             help="Shortcuts for specifying time intervals. "
                  "Pass any date or date range in string format.\n"
                  "Special options include:\n"
@@ -170,8 +172,8 @@ def set_config(args):
     if not_none(args, 'nproc'):
         CONFIG['GENERAL']['N_DOWNLOADS'] = \
             CONFIG['GENERAL']['N_PROC'] = args['nproc']
-    # if not_none(args, 'quiet'):
-    #     CONFIG['GENERAL']['QUIET'] = args['quiet']
+    if not_none(args, 'quiet'):
+        CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
         CONFIG['GENERAL']['DAT_DIR'] = args['dir']
     if not_none(args, 'email'):
@@ -207,13 +209,17 @@ def set_config(args):
 
 
 # -----------------------------------------------------------------------------
-def shutdown():
-    from esahub import tty
+def interrupt():
     msg = 'Execution interrupted manually.'
     logger.warning(msg)
-    tty.quit()
     print(msg, file=sys.stderr)
+    shutdown()
     sys.exit()
+
+
+def shutdown():
+    from esahub import tty
+    del tty.screen
 
 
 def main():
@@ -250,12 +256,10 @@ def main():
     #
     # These modules MUST be imported AFTER altering the CONFIG.
     #
-    from esahub import tty, main
+    from esahub import main
 
     try:
         a = time.time()
-
-        tty.init()
 
         if cmd == 'doctor':
             main.doctor(delete=args['delete'], repair=args['repair'])
@@ -267,7 +271,7 @@ def main():
             main.get()
 
     except KeyboardInterrupt:
-        shutdown()
+        interrupt()
 
     finally:
         b = time.time()

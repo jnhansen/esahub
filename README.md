@@ -59,6 +59,7 @@ $ esahub [cmd] [args] ...
 | <code>&lt;SAT&gt;</code>                  | all           | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
 | <code>-N &#124; --nproc &lt;N&gt;</code>  | all           | number of parallel processes/downloads (defaults to config `GENERAL.N_PROC` and `GENERAL.N_DOWNLOADS`)
 | <code>--log</code>                        | all           | write log file
+| <code>--quiet</code>                      | all           | Suppress terminal output
 | <code>-d &#124; --dir &lt;DIR&gt;</code>  | all           | raw data directory (defaults to config `GENERAL.DATA_DIR`)
 | <code>-o &#124; --out &lt;FILE&gt;</code> | <code>ls</code> | write files to JSON
 | <code>-i &#124; --in &lt;FILE&gt;</code>  | <code>get</code> | read files from JSON

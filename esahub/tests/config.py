@@ -39,7 +39,7 @@ def prepare():
     fs = scihub.search(query, limit=2)
     _config = config.CONFIG['GENERAL']['DATA_DIR']
     config.CONFIG['GENERAL']['DATA_DIR'] = TEST_DATA_DIR_ORIGINAL
-    scihub.download_many(fs)
+    scihub.download(fs)
     # move and corrupt one of the files
     corrupt_file = os.listdir(TEST_DATA_DIR_ORIGINAL)[-1]
     _move_from = os.path.join(TEST_DATA_DIR_ORIGINAL, corrupt_file)
