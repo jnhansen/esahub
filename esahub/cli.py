@@ -11,6 +11,7 @@ import time
 import logging
 import datetime
 from .config import CONFIG
+from . import tty
 
 
 locale.setlocale(locale.LC_ALL, '')
@@ -212,13 +213,12 @@ def set_config(args):
 def interrupt():
     msg = 'Execution interrupted manually.'
     logger.warning(msg)
-    print(msg, file=sys.stderr)
+    tty.screen.result(msg)
     shutdown()
     sys.exit()
 
 
 def shutdown():
-    from esahub import tty
     del tty.screen
 
 

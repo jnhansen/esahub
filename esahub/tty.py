@@ -9,6 +9,8 @@ NOBAR_FORMAT = "{desc}"
 STATUS_RATE_FORMAT = "{desc} {n_fmt} [{elapsed}, {rate_fmt}]"
 STATUS_BAR_FORMAT = "{desc} {percentage:3.0f}% |{bar}| [{elapsed}]"
 STATUS_NOBAR_FORMAT = "{desc} [{elapsed}]"
+DESC_LEN = 50
+LONG_DESC_LEN = 80
 FAKE_TOTAL = 9000000000000
 
 
@@ -19,6 +21,18 @@ def shorten(text, maxlen=30):
         n_end = int((maxlen - 3) / 2)
         n_start = maxlen - 3 - n_end
         return '{}...{}'.format(text[:n_start], text[-n_end:])
+
+
+def _format_desc(desc, key, long=False):
+    current_len = len(desc)
+    if '{name}' in desc:
+        current_len -= len('{name}')
+    if long:
+        key_len = LONG_DESC_LEN - current_len
+    else:
+        key_len = DESC_LEN - current_len
+    short_file_name = shorten(key, key_len)
+    return desc.format(name=short_file_name)
 
 
 class Screen():
@@ -100,7 +114,7 @@ class Screen():
     def __getitem__(self, key):
         if key not in self._lines:
             self._lines[key] = tqdm(
-                desc='Downloading {name}'.format(name=shorten(key)),
+                desc=_format_desc('Downloading {name}', key),
                 unit='B', unit_scale=True,
                 bar_format=BAR_FORMAT,
                 mininterval=0.3,
@@ -111,16 +125,10 @@ class Screen():
 
         return self._lines[key]
 
-    def __setitem__(self, key, text):
-        if key == 'result':
-            self.result(text)
-        elif key == 'status':
-            self.screen.status()
-            self._status.set_description_str(text)
-            self._status.refresh()
-        elif key in self._lines:
-            self._lines[key].desc = text.format(name=shorten(key))
-            self._lines[key].refresh()
+    def __setitem__(self, key, value):
+        pbar = self.__getitem__(key)
+        pbar.desc = _format_desc(value, key)
+        pbar.refresh()
 
     def quit(self):
         # Close all progress bars

@@ -5,8 +5,8 @@ import lxml.etree as ET
 from datetime import datetime, timedelta
 import pytz
 import re
-from esahub.config import CONFIG
-from esahub import utils, geo, checksum, tty
+from .config import CONFIG
+from . import utils, geo, checksum, tty
 from urllib.parse import urlparse, parse_qs, urlencode
 from collections import OrderedDict
 import hashlib
@@ -40,32 +40,41 @@ class NotFoundError(Exception):
 
 
 class SessionManager():
-    _sessions = {}
+    """
+    Manage active HTTP sessions.
 
-    def __init__(self):
-        pass
+    Keep different sessions for queries and downloads, because concurrent
+    downloads are limited, while queries are not.
+    """
+    def __init__(self, concurrent=None):
+        self._concurrent = concurrent
+        self._sessions = {}
 
     def __getitem__(self, server):
         if server not in self._sessions:
             cfg = CONFIG['SERVERS'][server]
             auth = aiohttp.BasicAuth(login=cfg['user'],
                                      password=cfg['password'])
-            connector = aiohttp.TCPConnector(limit=2)
+            if self._concurrent is None:
+                concurrent = cfg['downloads']
+            else:
+                concurrent = self._concurrent
+            connector = aiohttp.TCPConnector(limit=concurrent)
             self._sessions[server] = aiohttp.ClientSession(
                 auth=auth, connector=connector)
         return self._sessions[server]
 
     def __del__(self):
+        # Close all active sessions
         loop = asyncio.get_event_loop()
         closer_tasks = []
         for server, session in self._sessions.items():
-            closer_tasks.append(
-                session.close()
-            )
+            closer_tasks.append(session.close())
         loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
-session = SessionManager()
+QUERY = SessionManager(concurrent=20)
+DOWNLOAD = SessionManager()
 
 
 def block(fn, *args, **kwargs):
@@ -79,7 +88,7 @@ def block(fn, *args, **kwargs):
 def get_response(url):
     async def _resp(url):
         server = _get_server_from_url(url)
-        async with session[server].get(url) as resp:
+        async with QUERY[server].get(url) as resp:
             return resp
     return block(_resp, url)
 
@@ -92,7 +101,7 @@ async def _resolve(url, server=None):
     if server is None:
         server = _get_server_from_url(url)
 
-    async with session[server].get(url) as response:
+    async with QUERY[server].get(url) as response:
         return await response.text()
 
 
@@ -113,11 +122,11 @@ async def get_total_results(url):
 async def _ping_single(server):
     cfg = CONFIG['SERVERS'][server]
     url = '{host}/search?q=*:*'.format(host=cfg['host'])
-    async with session[server].get(url) as response:
+    async with QUERY[server].get(url) as response:
         return (server, response.status)
 
 
-async def _download(url, destination, pbar=None, return_md5=False):
+async def _download(url, destination, return_md5=False):
     """Downloads a file from the remote server into the specified destination.
 
     Parameters
@@ -139,29 +148,28 @@ async def _download(url, destination, pbar=None, return_md5=False):
     #
     path, file_name = os.path.split(destination)
     os.makedirs(path, exist_ok=True)
+    pbar_key = file_name
 
     if return_md5:
         hash_md5 = hashlib.md5()
 
     server = _get_server_from_url(url)
-    async with session[server].get(url) as response:
+    async with DOWNLOAD[server].get(url, timeout=None) as response:
         size = int(response.headers['Content-Length'])
-        if pbar is not None:
-            pbar.n = 0
-            pbar.total = size
-            pbar.refresh()
-        chunks_done = 0
+        # Create progress bar only now:
+        pbar = tty.screen[pbar_key]
+        pbar.n = 0
+        pbar.total = size
+        pbar.refresh()
+
         with open(destination, 'wb') as f:
             async for data in response.content.iter_chunked(CHUNK):
                 if return_md5:
                     hash_md5.update(data)
                 f.write(data)
-                chunks_done += 1
                 progress = len(data)
                 tty.screen.status(progress=progress)
-                if pbar is not None:
-                    # pbar.update(CHUNK)
-                    pbar.update(len(data))
+                pbar.update(len(data))
 
     # if pbar is not None:
     #     pbar.close()
@@ -658,7 +666,7 @@ async def _md5(product=None, uuid=None):
         md5_url = _checksum_url_from_uuid(uuid)
 
     server = _get_server_from_url(md5_url)
-    async with session[server].get(md5_url) as response:
+    async with QUERY[server].get(md5_url) as response:
         result = await response.read()
     return result.decode().lower()
 
@@ -738,7 +746,6 @@ async def _single_download(product, return_md5=False):
     file_name = fdata['filename'] + ext
 
     pbar_key = file_name
-    pbar = tty.screen[pbar_key]
 
     b_download = True
     b_file_okay = False
@@ -750,6 +757,9 @@ async def _single_download(product, return_md5=False):
     # Check if file already exists in location:
     #
     if os.path.exists(full_file_path) and os.path.isfile(full_file_path):
+
+        # Create progress bar
+        # pbar = tty.screen[pbar_key]
 
         if not CONFIG['GENERAL']['CHECK_EXISTING']:
             #
@@ -774,7 +784,8 @@ async def _single_download(product, return_md5=False):
                 b_file_okay = True
             else:
                 msg = '{} MD5 wrong: redownloading ...'.format(file_name)
-                tty.screen[pbar_key] = 'Redownloading {name}'
+                # Don't create the progress bar just yet
+                # tty.screen[pbar_key] = 'Redownloading {name}'
                 logger.debug(msg)
 
     if b_download:
@@ -783,7 +794,7 @@ async def _single_download(product, return_md5=False):
         #
         for i in range(CONFIG['GENERAL']['TRIALS']):
             complete = await _download(fdata['url'], full_file_path,
-                                       pbar=pbar, return_md5=return_md5)
+                                       return_md5=return_md5)
             if return_md5:
                 complete, local_md5 = complete
 
