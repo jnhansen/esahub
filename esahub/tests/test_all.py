@@ -1,4 +1,4 @@
-from esahub import scihub, geo, utils, checksum, check, main
+from esahub import scihub, utils, checksum, check, main
 import unittest
 import contextlib
 import logging
@@ -8,6 +8,7 @@ import pytz
 import os
 import sys
 import subprocess
+from shapely.wkt import loads as wkt_loads
 from esahub.tests import config as test_config
 from esahub import config
 
@@ -303,8 +304,10 @@ class ScihubSearchTestCase(TestCase):
                     # Assert that the products indeed intersect the
                     # requested location.
                     #
-                    self.assertTrue(geo.intersect(f['coords'], ref_coords,
-                                                  tolerance=0.2))
+                    distance = wkt_loads(f['coords']).distance(
+                        wkt_loads(ref_coords))
+                    utils.eprint('Distance: {}'.format(distance))
+                    self.assertLessEqual(distance, 0.3)
 
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-3'}
