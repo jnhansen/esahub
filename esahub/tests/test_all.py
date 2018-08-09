@@ -1,4 +1,4 @@
-from esahub import scihub, geo, utils, checksum, check, main
+from esahub import scihub, utils, checksum, check, main
 import unittest
 import contextlib
 import logging
@@ -8,6 +8,7 @@ import pytz
 import os
 import sys
 import subprocess
+from shapely.wkt import loads as wkt_loads
 from esahub.tests import config as test_config
 from esahub import config
 
@@ -54,16 +55,14 @@ class ScihubTestCase(TestCase):
 
     def test_servers(self):
         for name in scihub._get_available_servers():
-            auth = config.CONFIG['SERVERS'][name]
-            conn = scihub.Connection(**auth)
+            cfg = config.CONFIG['SERVERS'][name]
             with self.subTest(server_name=name):
-                # url = scihub_connect.Query().build_query_url()
-                url = '{}/search?q=*:*'.format(auth['host'])
-                result = conn.resolve(url)
+                url = '{}/search?q=*:*'.format(cfg['host'])
+                response = scihub.get_response(url)
                 #
                 # Assert that the HTML response has status code 200 (OK)
                 #
-                self.assertEqual(result.code, 200)
+                self.assertEqual(response.status, 200)
 
     def test__generate_next_url(self):
         # _generate_next_url(url, total=None)
@@ -131,7 +130,8 @@ class ScihubTestCase(TestCase):
         for product in products:
             with self.subTest(product=product):
                 self.assertEqual(
-                    scihub._uuid_from_identifier(product['title']),
+                    scihub.block(scihub._uuid_from_identifier,
+                                 product['title']),
                     product['uuid']
                 )
 
@@ -154,13 +154,13 @@ class ScihubTestCase(TestCase):
     #     # _preview_url_from_uuid(uuid, host=None)
     #     pass
 
-    def test_resolve(self):
+    def test_get_response(self):
         for name in scihub._get_available_servers():
             with self.subTest(server_name=name):
-                response = scihub.resolve(
+                response = scihub.get_response(
                     scihub._build_url({'query': '*:*'}, name)
                 )
-                self.assertEqual(response.code, 200)
+                self.assertEqual(response.status, 200)
 
     def test_md5_from_file(self):
         for f in utils.ls(config.CONFIG['GENERAL']['DATA_DIR']):
@@ -202,14 +202,30 @@ class ScihubSearchTestCase(TestCase):
         server = scihub._auto_detect_server_from_query(query,
                                                        available_only=True)[0]
         url = scihub._build_url(query, server)
-        result = scihub.resolve(url)
-        html = result.read()
+        html = scihub.resolve(url)
         #
         # Assert that the number of entries found on the page matches the
         # number of entries requested per page.
         #
-        self.assertEqual(html.count(b'<entry>'),
+        self.assertEqual(html.count('<entry>'),
                          config.CONFIG['GENERAL']['ENTRIES'])
+
+    def test_orbit_query(self):
+        for search_str, orbit in [
+            ('ASC', 'ASCENDING'),
+            ('DESC', 'DESCENDING')
+        ]:
+            query = {'orbit': search_str}
+            result = scihub.search(query, limit=20)
+            for prod in result:
+                self.assertEqual(prod['orbit_direction'], orbit)
+
+    def test_id_query(self):
+        prod = scihub.search({}, limit=5)[-1]
+        query = {'id': prod['title']}
+        result = scihub.search(query)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], prod)
 
     def test_queries(self):
         queries = [
@@ -221,25 +237,24 @@ class ScihubSearchTestCase(TestCase):
                 server = scihub._auto_detect_server_from_query(
                     q, available_only=True)[0]
                 url = scihub._build_url(q, server=server)
-                result = scihub.resolve(url)
+                response = scihub.get_response(url)
                 #
                 # Assert that queries for each mission return a
                 # status code 200 (OK)
                 #
-                self.assertEqual(result.code, 200)
+                self.assertEqual(response.status, 200)
 
         with self.subTest('count entries'):
             q = {'mission': 'Sentinel-3'}
             server = scihub._auto_detect_server_from_query(
                 q, available_only=True)[0]
             url = scihub._build_url(q, server=server)
-            result = scihub.resolve(url)
-            html = result.read()
+            html = scihub.resolve(url)
             #
             # Assert that the number of entries found on the page matches the
             # number of entries requested per page.
             #
-            self.assertEqual(html.count(b'<entry>'),
+            self.assertEqual(html.count('<entry>'),
                              config.CONFIG['GENERAL']['ENTRIES'])
 
     def test_temporal_queries(self):
@@ -289,8 +304,10 @@ class ScihubSearchTestCase(TestCase):
                     # Assert that the products indeed intersect the
                     # requested location.
                     #
-                    self.assertTrue(geo.intersect(f['coords'], ref_coords,
-                                                  tolerance=0.1))
+                    distance = wkt_loads(f['coords']).distance(
+                        wkt_loads(ref_coords))
+                    utils.eprint('Distance: {}'.format(distance))
+                    self.assertLessEqual(distance, 0.3)
 
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-3'}
@@ -340,7 +357,7 @@ class ScihubDownloadTestCase(TestCase):
     def test_download_many(self):
         file_list = scihub.search({'query': SMALL_SIZE_QUERY},
                                   limit=2)
-        scihub.download_many(file_list)
+        scihub.download(file_list)
         #
         # Assert that all downloads were successful.
         #
@@ -536,17 +553,17 @@ class MainTestCase(TestCase):
     def test_doctor(self):
         test_config.copy_corrupt_data()
         corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
-                                   path=False)
-        healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
-                                   path=False)
-        main.doctor()
+                                 path=False)
+        # healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
+        #                          path=False)
+        result = main.doctor()
+        bad_files = [os.path.split(status[0])[1]
+                     for status in result if status[1] is False]
+
         #
         # Assert that the number of healthy/corrupt files detected are correct
         #
-        self.assertEqual(check.BAD_FILE_COUNTER, len(corrupt_files))
-        self.assertEqual(check.FILE_COUNTER,
-                         len(corrupt_files) + len(healthy_files))
-        bad_files = [os.path.split(_)[1] for _ in check.BAD_FILES]
+        self.assertEqual(len(bad_files), len(corrupt_files))
         for corrupt_file in corrupt_files:
             #
             # Assert that each corrupt file has been registered.
@@ -556,9 +573,9 @@ class MainTestCase(TestCase):
     def test_doctor_delete(self):
         test_config.copy_corrupt_data()
         corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
-                                   path=False)
+                                 path=False)
         healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
-                                   path=False)
+                                 path=False)
         main.doctor(delete=True)
         #
         # Assert that the corrupt files have been deleted.
@@ -577,7 +594,7 @@ class MainTestCase(TestCase):
     def test_doctor_repair(self):
         test_config.copy_corrupt_data()
         corrupt_files = utils.ls(test_config.TEST_DATA_DIR_CORRUPT,
-                                   path=False)
+                                 path=False)
         # healthy_files = utils.ls(test_config.TEST_DATA_DIR_ORIGINAL,
         #                            path=False)
         main.doctor(repair=True)
@@ -597,7 +614,7 @@ class MainTestCase(TestCase):
 # utils
 # -----------------------------------------------------------------------------
 
-class UtilsTestCase(TestCase):    
+class UtilsTestCase(TestCase):
     def test_parse_datetime(self):
         _dt = DT.datetime
         dates = [

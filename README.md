@@ -16,8 +16,6 @@ in `config.yaml`.
 
 You should overwrite the required settings in your `~/.esahub.conf`, especially:
 * `GENERAL.DATA_DIR`
-* `GENERAL.LOG_FILE`
-* `GENERAL.EMAIL_REPORT_RECIPIENTS`
 
 The full range of Copernicus data servers are supported, including:
 * `https://scihub.copernicus.eu/dhus`
@@ -51,33 +49,35 @@ $ esahub [cmd] [args] ...
 |:-------------|:-----------------------------------------------------------------------------------
 | `ls`         | Queries SciHub for archives matching the specified query parameters. Prints the total number of files and data size.
 | `get`        | Queries SciHub like `ls`, but then downloads the files.
-| `doctor`     | Checks local `.zip` archives for consistency, either by validating the zip format or by comparing to the MD5 checksum from SciHub. Allows to either delete or repair broken files.
+| `doctor`     | Checks local satellite products for consistency, either by validating the zip/NetCDF format or by comparing to the MD5 checksum from SciHub. Allows to either delete or repair broken files.
 
 
 ### Options
 
-| Option                                    | Available for   | Description
-|:------------------------------------------|:----------------|:------------------------------------
-| <code>&lt;SAT&gt;</code>                  | all             | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
-| <code>-N &#124; --nproc &lt;N&gt;</code>  | all             | number of parallel processes/downloads (defaults to config `GENERAL.N_PROC` and `GENERAL.N_DOWNLOADS`)
-| <code>--log</code>                        | all             | write log file
-| <code>-d &#124; --dir &lt;DIR&gt;</code>  | all             | raw data directory (defaults to config `GENERAL.DATA_DIR`)
-| <code>--out &lt;FILE&gt;</code>           | <code>ls</code> | write files to JSON
-| <code>--in &lt;FILE&gt;</code>            | <code>get</code> | read files from JSON
-| <code>--mission &lt;MISSION&gt;</code>    | <code>ls&#124;get</code> | <code>Sentinel-1&#124;Sentinel-2&#124;Sentinel-3</code> (default: `Sentinel-3`)
+| Option                                    | Available for | Description
+|:------------------------------------------|:--------------|:------------------------------------
+| <code>&lt;SAT&gt;</code>                  | all           | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
+| <code>-N &#124; --nproc &lt;N&gt;</code>  | all           | number of parallel processes/downloads (defaults to config `GENERAL.N_PROC` and `GENERAL.N_DOWNLOADS`)
+| <code>--log</code>                        | all           | write log file
+| <code>--quiet</code>                      | all           | Suppress terminal output
+| <code>-d &#124; --dir &lt;DIR&gt;</code>  | all           | raw data directory (defaults to config `GENERAL.DATA_DIR`)
+| <code>-o &#124; --out &lt;FILE&gt;</code> | <code>ls</code> | write files to JSON
+| <code>-i &#124; --in &lt;FILE&gt;</code>  | <code>get</code> | read files from JSON
+| <code>-m &#124; --mission &lt;MISSION&gt;</code>    | <code>ls&#124;get</code> | <code>Sentinel-1&#124;Sentinel-2&#124;Sentinel-3</code> (default: `Sentinel-3`)
 | <code>-g &#124; --geo &lt;WKT&gt;</code>  | <code>ls&#124;get</code> | geospatial location in WKT format
 | <code>--location &lt;LOCATION&gt;</code>  | <code>ls&#124;get</code> | location as defined in config `LOCATIONS`
-| <code>-t &#124; --time &lt;ARG&gt;</code>       | <code>ls&#124;get</code> | Supports a variety of datetime string formats.
-| <code>--type &lt;TYPE&gt;</code>                | <code>ls&#124;get</code> | e.g. `GRD`
+| <code>-t &#124; --time &lt;ARG&gt;</code> | <code>ls&#124;get</code> | Supports a variety of datetime string formats.
+| <code>--type &lt;TYPE&gt;</code>          | <code>ls&#124;get</code> | e.g. `GRD`
+| <code>--orbit &lt;ORBIT&gt;</code>        | <code>ls&#124;get</code> | `ASC` or `DESC`
+| <code>--id &lt;ID&gt;</code>              | <code>ls&#124;get</code> | product identifier, may include wildcards (`*`)
 | <code>-q &#124; --query &lt;QUERY&gt;</code>    | <code>ls&#124;get</code> | custom query for SciHub, e.g. for single archive: `identifier:...`
-| <code>-m &#124; --mode &lt;MODE&gt;</code>      | `doctor`        | <code>zip&#124;file</code>
-| <code>--delete</code>                     | `doctor`        | delete corrupt files
-| <code>--repair</code>                     | `doctor`        | redownload corrupt files
+| <code>--mode &lt;MODE&gt;</code>          | `doctor`      | <code>zip&#124;file</code>
+| <code>--delete</code>                     | `doctor`      | delete corrupt files
+| <code>--repair</code>                     | `doctor`      | redownload corrupt files
 | <code>--email</code>                      | `all`         | send email report
-| <code>--gui</code>                        | `all`         | use the GUI (by default runs in background)
 
 
-## Datetime parsing
+##### Datetime parsing
 The following are examples of datetime formats that will be automatically parsed into a date or date range:
 
 The following single dates will be explicitly converted to the date range covering the given year, month, or day:
