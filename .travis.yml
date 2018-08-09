@@ -2,6 +2,12 @@ sudo: false
 cache: pip
 dist: trusty
 language: python
+addons:
+  apt:
+    packages:
+      - libhdf5-serial-dev
+      - netcdf-bin
+      - libnetcdf-dev
 matrix:
   include:
   - python: 3.5
