@@ -1,271 +1,208 @@
-# coding=utf-8
-""" This module implements the interface with the SciHub portal,
-    especially authentication and queries.
-
-TODO: Switch from multiprocessing to threading?
-
-"""
-import lxml.etree as ET
 import os
-import sys
-import time
-import logging
-import re
-import errno
-# import hashlib
-import base64
-import ssl
-# import math
-import datetime as DT
+import aiohttp
+import asyncio
+import lxml.etree as ET
+from datetime import datetime, timedelta
 import pytz
-import multiprocessing
-import socket
-from functools import partial
-from collections import OrderedDict
+import re
 from .config import CONFIG
-from . import utils, tty, geo, checksum
-
-
+from . import utils, geo, checksum, tty
+from urllib.parse import urlparse, parse_qs, urlencode
+from collections import OrderedDict
+import hashlib
+import logging
 logger = logging.getLogger('esahub')
-PY2 = sys.version_info < (3, 0)
-DATETIME_FMT = '%Y-%m-%dT%H:%M:%S.000Z'
+logger.disabled = True
 
-if PY2:
-    # Python2 imports
-    from urllib import urlencode
-    from urllib2 import urlopen, Request
-    from urllib2 import HTTPError, URLError
-    from urlparse import urlparse, parse_qs
-else:
-    # Python3 imports
-    from urllib.request import urlopen, Request
-    from urllib.parse import urlparse, parse_qs, urlencode
-    from urllib.error import HTTPError, URLError
 
-COUNTER = 0
-TOTAL = 0
-COLLECT = []
-
+CHUNK = 64 * 1024
+PREFIXES = {
+    'os': 'http://a9.com/-/spec/opensearch/1.1/',
+    'opensearch': 'http://a9.com/-/spec/opensearch/1.1/',
+    'doc': 'http://www.w3.org/2005/Atom',
+    'gml': 'http://www.opengis.net/gml'
+}
 DOWNLOAD_URL_PATTERN = \
     "{host}/odata/v1/Products('{uuid}')/$value"
 CHECKSUM_URL_PATTERN = \
     "{host}/odata/v1/Products('{uuid}')/Checksum/Value/$value"
 PREVIEW_URL_PATTERN = \
     "{host}/odata/v1/Products('{uuid}')/Products('Quicklook')/$value"
+DATETIME_FMT = '%Y-%m-%dT%H:%M:%S.000Z'
 
 
 # -----------------------------------------------------------------------------
-# CLASS DEFINITION: CONNECTION
+# HTTP CONNECTION METHODS
+# This is all the async stuff
 # -----------------------------------------------------------------------------
 class NotFoundError(Exception):
     pass
 
 
-class Connection(object):
+class SessionManager():
     """
-    An abstraction of an authenticated connection to the Copernicus SciHub.
+    Manage active HTTP sessions.
+
+    Keep different sessions for queries and downloads, because concurrent
+    downloads are limited, while queries are not.
     """
-    user = ''
-    password = ''
+    def __init__(self, concurrent=None):
+        self._concurrent = concurrent
+        self._sessions = {}
 
-    def __init__(self, mission=None, user=None, password=None, host=None):
-        if mission is not None:
-            self.authenticate(mission=mission)
-        else:
-            self.login(user=user, password=password, host=host)
-
-    # @classmethod
-    def login(self, user, password, host):
-        """Define the login credentials.
-
-        Parameters
-        ----------
-        user : str
-        password : str
-        host : str
-            The URL to the SciHub host.
-        """
-        self.host = host
-        self.user = user
-        self.password = password
-
-    # @classmethod
-    def authenticate(self, mission):
-        """Sets the login credentials as appropriate for the specified mission.
-
-        Parameters
-        ----------
-        mission : {'S1A', 'S1B', 'S2A', 'S2B', 'S3A'}
-        """
-        if mission in CONFIG['SATELLITES']:
-            source = CONFIG['SATELLITES'][mission]['source'][0]
-            self.login(
-                **CONFIG['SERVERS'][source]
-            )
-        else:
-            logging.warning('No server found for mission: {}'.format(mission))
-
-    # GENERAL METHODS FOR HTTP REQUESTS AND DOWNLOADS
-    # -------------------------------------------------------------------------
-    @classmethod
-    def _encode(cls, url):
-        """Minimal URL encoding as needed for this specific purpose.
-
-        Parameters
-        ----------
-        url : str
-
-        Returns
-        -------
-        str
-            The encoded URL.
-        """
-        url = url.replace(' ', '%20')
-        url = url.replace('"', '%22')
-        return url
-
-    # @classmethod
-    def resolve(self, url):
-        """Resolves the specified URL handling the HTTP authentication.
-
-        Authenticates with the server and returns the urllib response object.
-        Handles connection timeouts and 503 status codes as specified in the
-        config module.
-
-        Parameters
-        ----------
-        url : str
-
-        Returns
-        -------
-        HTTP response
-            Provides functions such as `read()`, `readline()`, `getcode()`,
-            `geturl()`, `info()`
-
-        """
-        trials = 0
-        while True:
-            try:
-                url = self._encode(url)
-                request = Request(url)
-                if not (self.user is None and self.password is None):
-                    if PY2:
-                        base64string = base64.b64encode('{}:{}'.format(
-                                self.user, self.password))
-                    else:
-                        base64string = base64.b64encode('{}:{}'.format(
-                                self.user, self.password
-                            ).encode('ascii')).decode('ascii')
-                    request.add_header("Authorization",
-                                       "Basic {}".format(base64string))
-                gcontext = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-                result = urlopen(request, timeout=CONFIG['GENERAL']['TIMEOUT'],
-                                 context=gcontext)
-            except socket.timeout as e:
-                return HTTPError(url=url, code=504, msg='{}'.format(e),
-                                 hdrs={}, fp='')
-            except HTTPError as e:
-                # print(e)
-                # if CONFIG['GENERAL']['WAIT_ON_503'] and e.code == 503:
-                #     time.sleep(CONFIG['GENERAL']['RECONNECT_TIME'])
-                if CONFIG['GENERAL']['WAIT_ON_503']:
-                    time.sleep(CONFIG['GENERAL']['RECONNECT_TIME'])
-                else:
-                    trials += 1
-                    #
-                    # If the connection could not be established after the
-                    # maximum number of trials, raise with error message.
-                    #
-                    if trials >= CONFIG['GENERAL']['TRIALS']:
-                        logging.error('{0} {1}, URL: {2}'.format(
-                            tty.error('ERROR (%i trials):' % trials), e, url))
-                        # raise
-                        return e
-                    #
-                    # Wait for an increasing time after every trial.
-                    #
-                    time.sleep(CONFIG['GENERAL']['RECONNECT_TIME'] * trials)
+    def __getitem__(self, server):
+        if server not in self._sessions:
+            cfg = CONFIG['SERVERS'][server]
+            auth = aiohttp.BasicAuth(login=cfg['user'],
+                                     password=cfg['password'])
+            if self._concurrent is None:
+                concurrent = cfg['downloads']
             else:
-                return result
+                concurrent = self._concurrent
+            connector = aiohttp.TCPConnector(limit=concurrent)
+            self._sessions[server] = aiohttp.ClientSession(
+                auth=auth, connector=connector)
+        return self._sessions[server]
 
-    def auto_resolve(self, url):
-        # Detect server from url:
-        # host = re.search('(.*)/search', url).group(1)
-        # auth = utils.select(CONFIG['SERVERS'], first=True, host=host)
-        auth = {}
-        for servername, server in CONFIG['SERVERS'].items():
-            if server['host'] in url:
-                auth = server
-                break
-        # if len(auth) == 0:
-        #     print(url)
-        self.login(**auth)
-        return self.resolve(url)
+    def __del__(self):
+        # Close all active sessions
+        loop = asyncio.get_event_loop()
+        closer_tasks = []
+        for server, session in self._sessions.items():
+            closer_tasks.append(session.close())
+        loop.run_until_complete(asyncio.wait(closer_tasks))
+
+
+QUERY = SessionManager(concurrent=20)
+DOWNLOAD = SessionManager()
+
+
+def block(fn, *args, **kwargs):
+    """Run an async function and block."""
+    task = fn(*args, **kwargs)
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(task)
+    return result
+
+
+def get_response(url):
+    async def _resp(url):
+        server = _get_server_from_url(url)
+        async with QUERY[server].get(url) as resp:
+            return resp
+    return block(_resp, url)
+
+
+def resolve(url, server=None):
+    return block(_resolve, url, server=server)
+
+
+async def _resolve(url, server=None):
+    if server is None:
+        server = _get_server_from_url(url)
+
+    async with QUERY[server].get(url) as response:
+        return await response.text()
+
+
+async def get_total_results(url):
+    response = await _resolve(url)
+    xml = response.encode('utf-8')
+    root = ET.fromstring(xml)
+    try:
+        total_results = int(root.find('os:totalResults', PREFIXES).text)
+    except TypeError:
+        total_results = 0
+    except AttributeError as e:
+        raise AttributeError("Could not extract total results from URL "
+                             "{}: {}".format(url, e))
+    return total_results
+
+
+async def _ping_single(server):
+    cfg = CONFIG['SERVERS'][server]
+    url = '{host}/search?q=*:*'.format(host=cfg['host'])
+    async with QUERY[server].get(url) as response:
+        return (server, response.status)
+
+
+async def _download(url, destination, return_md5=False):
+    """Downloads a file from the remote server into the specified destination.
+
+    Parameters
+    ----------
+    url : str
+        The source URL.
+    destination : str
+        The local target file path.
+    pbar : tqdm progress bar, optional
+        Update progress bar.
+
+    Returns
+    -------
+    bool
+        True if successful, False otherwise.
+    """
+    #
+    # Create directory.
+    #
+    path, file_name = os.path.split(destination)
+    os.makedirs(path, exist_ok=True)
+    pbar_key = file_name
+
+    if return_md5:
+        hash_md5 = hashlib.md5()
+
+    server = _get_server_from_url(url)
+    async with DOWNLOAD[server].get(url, timeout=None) as response:
+        size = int(response.headers['Content-Length'])
+        # Create progress bar only now:
+        pbar = tty.screen[pbar_key]
+        pbar.n = 0
+        pbar.total = size
+        pbar.refresh()
+
+        with open(destination, 'wb') as f:
+            async for data in response.content.iter_chunked(CHUNK):
+                if return_md5:
+                    hash_md5.update(data)
+                f.write(data)
+                progress = len(data)
+                tty.screen.status(progress=progress)
+                pbar.update(len(data))
+
+    # if pbar is not None:
+    #     pbar.close()
+
+    if return_md5:
+        return (True, hash_md5.hexdigest().lower())
+    else:
+        return True
 
 
 # -----------------------------------------------------------------------------
-# NEW METHODS
+# XML PARSING
 # -----------------------------------------------------------------------------
-def _generate_next_url(url, total=None):
-    parsed_url = urlparse(url)
-    q_params = parse_qs(parsed_url.query)
-    q_params = {k: v[0] if len(v) == 1 else v for k, v in q_params.items()}
-    if 'rows' in q_params:
-        q_params['rows'] = int(q_params['rows'])
-    else:
-        q_params['rows'] = 10
-    if 'start' in q_params:
-        q_params['start'] = int(q_params['start'])
-    else:
-        q_params['start'] = 0
-    q_params['start'] += q_params['rows']
-
-    if total is None or q_params['start'] <= total:
-        parsed_url = parsed_url._replace(query=urlencode(q_params, doseq=True))
-        return parsed_url.geturl()
-    else:
-        return False
-
-
-def _parse_page(url, first=False):
+def parse_page(xml):
     file_list = []
 
-    prefixes = {
-        'os': 'http://a9.com/-/spec/opensearch/1.1/',
-        'opensearch': 'http://a9.com/-/spec/opensearch/1.1/',
-        'doc': 'http://www.w3.org/2005/Atom',
-        'gml': 'http://www.opengis.net/gml'
-    }
-
-    #
-    # Retrials are handled in the resolve method
-    #
-    conn = Connection()
-    try:
-        response = conn.auto_resolve(url)
-        if isinstance(response, HTTPError):
-            raise response
-    except HTTPError:
-        if first:
-            return 0, []
-        else:
-            return []
-
-    xml = response.read()
     try:
         root = ET.fromstring(xml)
-        total_results = int(root.find('os:totalResults', prefixes).text)
-        # next_link = root.find("./doc:link[@rel='next']", prefixes)
-        for entry in root.findall('doc:entry', prefixes):
+        # try:
+        #     total_results = int(root.find('os:totalResults', PREFIXES).text)
+        # except TypeError:
+        #     total_results = 0
+
+        for entry in root.findall('doc:entry', PREFIXES):
 
             filename = entry.find("./doc:str[@name='identifier']",
-                                  prefixes).text
+                                  PREFIXES).text
             ingestiondate = utils.to_date(
-                entry.find("./doc:date[@name='ingestiondate']", prefixes).text,
+                entry.find("./doc:date[@name='ingestiondate']", PREFIXES).text,
                 output='date')
             try:
                 footprint_tag = entry.find("./doc:str[@name='gmlfootprint']",
-                                           prefixes).text
+                                           PREFIXES).text
                 match = re.search('<gml:coordinates>(.*)</gml:coordinates>',
                                   footprint_tag)
                 coords = geo.gml_to_polygon(match.groups()[0])
@@ -273,137 +210,74 @@ def _parse_page(url, first=False):
                 coords = None
 
             filesize = utils.h2b(entry.find("./doc:str[@name='size']",
-                                              prefixes).text)
+                                            PREFIXES).text)
             preview_url = entry.find("./doc:link[@rel='icon']",
-                                     prefixes).attrib['href']
+                                     PREFIXES).attrib['href']
+            try:
+                rel_orbit = int(entry.find(
+                    "doc:int[@name='relativeorbitnumber']", PREFIXES).text)
+            except AttributeError:
+                rel_orbit = None
+
+            try:
+                orbit_dir = entry.find("doc:str[@name='orbitdirection']",
+                                       PREFIXES).text.upper()
+            except AttributeError:
+                orbit_dir = None
+
             file_dict = {
-                # 'position'  : file_counter,
-                'title': entry.find('doc:title', prefixes).text,
-                'url': entry.find('doc:link', prefixes).attrib['href'],
-                'host': conn.host,
+                'title': entry.find('doc:title', PREFIXES).text,
+                'url': entry.find('doc:link', PREFIXES).attrib['href'],
                 'preview': preview_url,
-                'uuid': entry.find('doc:id', prefixes).text,
+                'uuid': entry.find('doc:id', PREFIXES).text,
                 'filename': filename,
                 'size': filesize,
                 'ingestiondate': ingestiondate,
-                'coords': coords
+                'coords': coords,
+                'orbit_direction': orbit_dir,
+                'rel_orbit': rel_orbit
             }
+            file_dict['host'] = _get_host_from_url(file_dict['url'])
             file_list.append(file_dict)
 
     except ET.XMLSyntaxError:
         # not valid XML
-        total_results = 0
         file_list = []
 
-    if first:
-        return total_results, file_list
-    else:
-        return file_list
+    return file_list
 
 
-def _get_file_list_from_url(url, limit=None):
-    global COUNTER, TOTAL, COLLECT
-    """ This function returns a list of all files resulting from the specified
-    query.
+async def _files_from_url(url):
+    xml = await _resolve(url)
+    result = parse_page(xml.encode('utf-8'))
+    tty.screen.status(progress=len(result))
+    return result
 
-    This method executes the query defined by the passed URL. It automatically
-    takes care of the pagination implemented by SciHub and iterates over the
-    returned pages.
 
-    Parameters
-    ----------
-    query_url : str
-        The SciHub URL that constitutes the query. It can be built using
-        `Query.build_query_url()`
-    limit : int, optional
-        The maximum number of results to return. If `None`, return all results
-        (default: None).
+async def _get_file_list_from_url(url, limit=None):
+    # Parse first page to get total number of results.
+    total_results = await get_total_results(url)
+    host = urlparse(url).netloc
+    tty.screen.status(desc='Querying {host}'.format(host=host),
+                      total=total_results, mode='bar')
 
-    Returns
-    -------
-    list of dict
-        A list of dictionaries containing metadata for each found file. Each
-        dictionary contains the following keys:
-        `position`, `title`, `url`, `preview`, `id`, `filename`, `size`,
-        `coords`
-    """
-    # file_list = []
-    # file_counter = 0
-    total_results = 0
-    # TOTAL_SIZE = 0.0
-
-    logging.debug('QUERYING {0} ...'.format(url))
-    urlname = urlparse(url).netloc
-
-    #
-    # Parallel parsing of pages.
-    #
-
-    # Parse first page serially to get total number of results.
-    current_url = url
-    total_results, files_first_page = _parse_page_wrapper(current_url,
-                                                          first=True)
     if limit is None:
-        TOTAL = total_results
+        total = total_results
     else:
-        TOTAL = min(limit, total_results)
+        total = min(limit, total_results)
 
-    COUNTER = 0
-    COLLECT = []
+    urls = [url] + [u for u in _generate_next_url(url, total=total)]
 
-    def _callback(result):
-        global COUNTER, TOTAL, COLLECT
-        COLLECT.extend(result)
-        COUNTER += len(result)
-        status = (0, 1) if TOTAL == 0 else (COUNTER, TOTAL)
-        tty.status('Querying {}...'.format(urlname), progress=status)
+    tasks = [_files_from_url(u) for u in urls]
+    results = await asyncio.gather(*tasks)
+    result = utils.flatten(results)
 
-    _callback(files_first_page)
-
-    #
-    # The processes are not CPU-intensive at all (the bottleneck is the server
-    # response time), therefore we can handle very large number of processes.
-    #
-    pool = multiprocessing.Pool(
-            processes=CONFIG['GENERAL']['N_SCIHUB_QUERIES'])
-
-    while True:
-        current_url = _generate_next_url(current_url, total=TOTAL)
-        if not current_url:
-            break
-        pool.apply_async(_parse_page_wrapper, (current_url,),
-                         callback=_callback)
-
-    pool.close()
-    pool.join()
-    tty.finish_status()
-
-    if limit is not None:
-        COLLECT = COLLECT[:limit]
-
-    # from IPython import embed; embed()
-
-    # TOTAL_SIZE = sum([f['size'] for f in COLLECT])
-
-    return COLLECT
+    return result
 
 
-def _parse_page_wrapper(*args, **kwargs):
-    #
-    # For some weird reason, _parse_page sometimes raises:
-    #      AttributeError: 'str' object has no attribute 'close'
-    # from the tempfile module. As this only occurs sometimes,
-    # just try again ...
-    #
-    while True:
-        try:
-            result = _parse_page(*args, **kwargs)
-        except Exception as e:
-            time.sleep(1)
-        else:
-            return result
-
-
+# -----------------------------------------------------------------------------
+# QUERY BUILDING
+# -----------------------------------------------------------------------------
 def _parse_time_parameter(value):
     # Default ingestiontime query parameters
     start = '1970-01-01T00:00:00.000Z'
@@ -411,31 +285,31 @@ def _parse_time_parameter(value):
     DATE_FMT = '%Y-%m-%dT00:00:00.000Z'
 
     if value == 'today':
-        start = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+        start = datetime.strftime(datetime.now(pytz.utc), DATE_FMT)
 
     elif value == 'yesterday':
-        start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
-                                     - DT.timedelta(1), DATE_FMT)
-        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+        start = datetime.strftime(datetime.now(pytz.utc)
+                                  - timedelta(1), DATE_FMT)
+        end = datetime.strftime(datetime.now(pytz.utc), DATE_FMT)
 
     elif value == 'midnight':
-        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATE_FMT)
+        end = datetime.strftime(datetime.now(pytz.utc), DATE_FMT)
 
     elif value == '24h':
-        start = DT.datetime.strftime(DT.datetime.now(pytz.utc)
-                                     - DT.timedelta(1), DATETIME_FMT)
-        end = DT.datetime.strftime(DT.datetime.now(pytz.utc), DATETIME_FMT)
+        start = datetime.strftime(datetime.now(pytz.utc)
+                                  - timedelta(1), DATETIME_FMT)
+        end = datetime.strftime(datetime.now(pytz.utc), DATETIME_FMT)
 
     else:
         parsed = utils.parse_datetime(value)
         if not isinstance(parsed, tuple):
-            start = DT.datetime.strftime(parsed, DATETIME_FMT)
+            start = datetime.strftime(parsed, DATETIME_FMT)
             end = start
         else:
             if parsed[0] is not None:
-                start = DT.datetime.strftime(parsed[0], DATETIME_FMT)
+                start = datetime.strftime(parsed[0], DATETIME_FMT)
             if parsed[1] is not None:
-                end = DT.datetime.strftime(parsed[1], DATETIME_FMT)
+                end = datetime.strftime(parsed[1], DATETIME_FMT)
 
     return start, end
 
@@ -487,15 +361,28 @@ def _build_query(query={}):
                     geo_query_list.append('footprint:"Intersects({0})"'.format(
                             CONFIG['LOCATIONS'][loc]))
                 else:
-                    logging.error(
+                    logger.error(
                         '{0} {1}'.format(tty.error('Location not found:'), loc)
                     )
 
         elif key == 'type':
-            query_list.append('producttype:{0}'.format(query['type']))
+            query_list.append('producttype:{}'.format(query['type']))
+
+        elif key == 'orbit':
+            if val.upper() in ['ASC', 'ASCENDING']:
+                orbit = 'ASCENDING'
+            elif val.upper() in ['DESC', 'DESCENDING']:
+                orbit = 'DESCENDING'
+            else:
+                raise ValueError("Invalid value for `orbit`: '{}'"
+                                 .format(val))
+            query_list.append('orbitdirection:{}'.format(orbit))
+
+        elif key == 'id':
+            query_list.append('identifier:{}'.format(query['id']))
 
         elif key == 'query':
-            query_list.append('{0}'.format(query['query']))
+            query_list.append('{}'.format(query['query']))
 
         elif key == 'sort':
             sort_string = '&orderby={} {}'.format(*query['sort'])
@@ -542,101 +429,30 @@ def _build_url(query, server):
     )
 
 
-def _download(url, destination, quiet=None, queue=None):
-    """Downloads a file from the remote server into the specified destination.
-
-    Parameters
-    ----------
-    url : str
-        The source URL.
-    destination : str
-        The local target file path.
-    quiet : bool, optional
-        Whether to suppress any command line output.
-    queue : multiprocessing.Manager.Queue, optional
-        A multiprocessing queue to submit status messages.
-
-    Returns
-    -------
-    bool
-        True if successful, False otherwise.
-    """
-    quiet = CONFIG['GENERAL']['QUIET'] if quiet is None else quiet
-
-    #
-    # Create directory.
-    #
-    path, file_name = os.path.split(destination)
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
-
-    try:
-        response = resolve(url)
-        if PY2:
-            size = int(response.info().getheaders("Content-Length")[0])
-        else:
-            size = int(response.headers.get("Content-Length"))
-        # size_str = utils.b2h(size)
-        if queue is not None:
-            queue.put((file_name, {'total': size,
-                                   'desc': 'Downloading {name}'}))
-        CHUNK = 32 * 1024
-        chunks_done = 0
-        t_start_download = time.time()
-        with open(destination, 'wb') as f:
-            while True:
-                chunk = response.read(CHUNK)
-                if not chunk:
-                    break
-                f.write(chunk)
-                chunks_done += 1
-                if queue is not None:
-                    queue.put((file_name, {'progress': CHUNK}))
-                    # if size is not None:
-                    #     queue.put((file_name,
-                    #                '{} Downloading ({} / {})'.format(
-                    #                     file_name,
-                    #                     utils.b2h(chunks_done*CHUNK),
-                    #                     size_str)
-                    #                ))
-                    # else:
-                    #     queue.put((file_name, '{} Downloading ({})'.format(
-                    #             file_name, utils.b2h(chunks_done*CHUNK))))
-        t_stop_download = time.time()
-        download_size = os.path.getsize(destination)
-        download_rate = download_size/(t_stop_download - t_start_download)
-        msg = '{0} Downloaded ({1} at {2}/s)'.format(
-            file_name, utils.b2h(download_size), utils.b2h(download_rate)
-        )
-        if not quiet:
-            logging.info(msg)
-        if queue is not None:
-            queue.put((file_name, {'desc': '{name} Downloaded'}))
-        #     queue.put((file_name, msg))
-
-    except HTTPError as e:
-        return False
-    except URLError as e:
-        return False
-    except Exception as e:
-        logging.error(repr(e))
-        return False
+# -----------------------------------------------------------------------------
+# UTILITY FUNCTIONS
+# -----------------------------------------------------------------------------
+def _generate_next_url(url, total=None):
+    parsed_url = urlparse(url)
+    q_params = parse_qs(parsed_url.query)
+    q_params = {k: v[0] if len(v) == 1 else v for k, v in q_params.items()}
+    if 'rows' in q_params:
+        q_params['rows'] = int(q_params['rows'])
     else:
-        return True
+        q_params['rows'] = 10
+    if 'start' in q_params:
+        q_params['start'] = int(q_params['start'])
+    else:
+        q_params['start'] = 0
 
+    if total is not None:
+        last_start = total - q_params['rows']
+        q_params['rows'] = min(q_params['rows'], total)
 
-# def _get_file_list_wrapper(url):
-#     host = re.search('(.*)/search',url).group(1)
-#     server = utils.select(list(CONFIG['SERVERS'].values()), host=host)
-#     if type(server) is list:
-#         server = server[0]
-#     Connection.login(**server)
-#     return _get_file_list_from_url(url)
+    while total is None or q_params['start'] < last_start:
+        q_params['start'] += q_params['rows']
+        parsed_url = parsed_url._replace(query=urlencode(q_params, doseq=True))
+        yield parsed_url.geturl()
 
 
 def _get_available_servers():
@@ -645,17 +461,21 @@ def _get_available_servers():
     return servers
 
 
-def _ping_single(servername):
-    # print('Pinging {} ...'.format(servername))
-    server = CONFIG['SERVERS'][servername]
-    conn = Connection(**server)
-    try:
-        result = conn.resolve('{url}/search?q=*:*'.format(url=server['host']))
-        # results[servername] = result.status
-        return (servername, result.status)
-    except HTTPError as e:
-        # results[servername] = e.status
-        return (servername, e.status)
+def _get_server_from_url(url):
+    if 'server' in CONFIG['GENERAL']['QUERY']:
+        return CONFIG['GENERAL']['QUERY']['server']
+    for servername, cfg in CONFIG['SERVERS'].items():
+        if cfg['host'] in url:
+            return servername
+
+    raise Exception("Could not determine server for {url}!".format(url=url))
+
+
+def _get_host_from_url(url):
+    p = urlparse(url)
+    host = '{}://{}/{}'.format(
+        p.scheme, p.netloc, p.path.strip('/').split('/')[0])
+    return host
 
 
 def _auto_detect_server_from_query(query, available_only=False):
@@ -689,17 +509,17 @@ def _auto_detect_server_from_query(query, available_only=False):
     return servers
 
 
-def _uuid_from_identifier(identifier):
+async def _uuid_from_identifier(identifier):
     identifier = os.path.splitext(os.path.split(identifier)[1])[0]
-    results = search({'identifier': identifier+'*'})
+    results = await _search({'identifier': identifier+'*'})
     if len(results) == 0:
         raise NotFoundError('Product not found: {}'.format(identifier))
     return results[0]['uuid']
 
 
-def _host_and_uuid_from_identifier(identifier):
+async def _host_and_uuid_from_identifier(identifier):
     identifier = os.path.splitext(os.path.split(identifier)[1])[0]
-    results = search({'identifier': identifier+'*'})
+    results = await _search({'identifier': identifier+'*'})
     if len(results) == 0:
         raise NotFoundError('Product not found: {}'.format(identifier))
     return (results[0]['host'], results[0]['uuid'])
@@ -712,18 +532,18 @@ def _host_from_uuid(uuid):
     return None
 
 
-def _download_url_from_identifier(identifier):
-    host, uuid = _host_and_uuid_from_identifier(identifier)
+async def _download_url_from_identifier(identifier):
+    host, uuid = await _host_and_uuid_from_identifier(identifier)
     return _download_url_from_uuid(uuid, host=host)
 
 
-def _checksum_url_from_identifier(identifier):
-    host, uuid = _host_and_uuid_from_identifier(identifier)
+async def _checksum_url_from_identifier(identifier):
+    host, uuid = await _host_and_uuid_from_identifier(identifier)
     return _checksum_url_from_uuid(uuid, host=host)
 
 
-def _preview_url_from_identifier(identifier):
-    host, uuid = _host_and_uuid_from_identifier(identifier)
+async def _preview_url_from_identifier(identifier):
+    host, uuid = await _host_and_uuid_from_identifier(identifier)
     return _preview_url_from_uuid(uuid, host=host)
 
 
@@ -746,57 +566,29 @@ def _preview_url_from_uuid(uuid, host=None):
 
 
 # -----------------------------------------------------------------------------
-# API METHODS
+# PUBLIC API METHODS
 # -----------------------------------------------------------------------------
-def resolve(url, server=None):
-    """ Resolves a SciHub URL and automatically determines the correct HTTP
-    authentication.
+# def ping(server=None):
+#     results = {}
+#     if server is not None:
+#         servers = [server]
+#     else:
+#         servers = list(CONFIG['SERVERS'].keys())
 
-    Parameters
-    ----------
-    url : str
-        The URL to resolve.
-    server : str, optional
-        If specified, resolve using the specified server. Not in general
-        needed.
+#     pool = multiprocessing.Pool(processes=len(servers))
+#     results = pool.map_async(_ping_single, servers)
+#     # pool.close()
+#     # pool.join()
+#     # for servername,server in servers.items():
+#     while not results.ready():
+#         time.sleep(1)
+#     return results.get()
 
-    Returns
-    -------
-    HTTPResponse
-        The HTTPRessponse or HTTPError object resulting from the URL.
-    """
-    if server is None:
-        if 'server' in CONFIG['GENERAL']['QUERY']:
-            auth = CONFIG['SERVERS'][CONFIG['GENERAL']['QUERY']['server']]
-            conn = Connection(**auth)
-            return conn.resolve(url)
-        else:
-            conn = Connection()
-            return conn.auto_resolve(url)
-    else:
-        auth = CONFIG['SERVERS'][server]
-        conn = Connection(**auth)
-        return conn.resolve(url)
+def search(*args, **kwargs):
+    return block(_search, *args, **kwargs)
 
 
-def ping(server=None):
-    results = {}
-    if server is not None:
-        servers = [server]
-    else:
-        servers = list(CONFIG['SERVERS'].keys())
-
-    pool = multiprocessing.Pool(processes=len(servers))
-    results = pool.map_async(_ping_single, servers)
-    # pool.close()
-    # pool.join()
-    # for servername,server in servers.items():
-    while not results.ready():
-        time.sleep(1)
-    return results.get()
-
-
-def search(query={}, server='auto', limit=None, **kwargs):
+async def _search(query={}, server='auto', limit=None, **kwargs):
     """ Search SciHub for satellite products.
     Parameters
     ----------
@@ -833,51 +625,55 @@ def search(query={}, server='auto', limit=None, **kwargs):
 
     if servers is None:
         servers = []
-    results = []
     query_string = _build_query(query)
 
-    remaining = limit
+    tasks = []
     for servername in servers:
         server = CONFIG['SERVERS'][servername]
-        # Connection.login(**server)
         url = '{url}/search?{q}'.format(
             url=server['host'], q=query_string
         )
-        logging.debug('Trying server {}: {}'.format(servername, url))
-        results.extend(_get_file_list_from_url(url, limit=remaining))
-        if remaining is not None:
-            remaining = limit - len(results)
-            if remaining <= 0:
-                break
+        logger.debug('Trying server {}: {}'.format(servername, url))
+        tasks.append(
+            _get_file_list_from_url(url, limit=limit)
+        )
+    results = await asyncio.gather(*tasks)
+    results = utils.flatten(results)
 
     #
     # Delete duplicate results (if product is on multiple servers).
+    # TODO: This should be done in the order of preference as
+    # given by CONFIG['SERVERS'] !
     #
-    filtered = OrderedDict(zip([_['filename'] for _ in results], results))
-    return list(filtered.values())
+    unique = utils.unique_by(results, lambda x: x['filename'])
+    if limit is not None:
+        unique = unique[:limit]
+
+    return unique
 
 
-# def remote_md5(query_url):
-#     """Returns the md5 sum of the file stored on SciHub given the download
-#     URL.
-#
-#     Parameters
-#     ----------
-#     query_url : str
-#         The SciHub download URL.
-#
-#     Returns
-#     -------
-#     str
-#         The md5 checksum in lower case.
-#     """
-#
-#     md5_query_url = query_url.replace('/$value','/Checksum/Value/$value')
-#     response = Connection.resolve(md5_query_url)
-#     if PY2:
-#         return response.read().lower()
-#     else:
-#         return response.read().decode().lower()
+async def _md5(product=None, uuid=None):
+    if product is not None:
+        if type(product) is dict and 'uuid' in product and 'host' in product:
+            md5_url = _checksum_url_from_uuid(product['uuid'],
+                                              host=product['host'])
+        elif type(product) is str:
+            md5_url = await _checksum_url_from_identifier(product)
+        else:
+            return False
+
+    elif uuid is not None:
+        md5_url = _checksum_url_from_uuid(uuid)
+
+    server = _get_server_from_url(md5_url)
+    async with QUERY[server].get(md5_url) as response:
+        result = await response.read()
+    return result.decode().lower()
+
+    # if PY2:
+    #     return result.lower()
+    # else:
+    #     return result.decode().lower()
 
 
 def md5(product=None, uuid=None):
@@ -896,23 +692,7 @@ def md5(product=None, uuid=None):
     str
         The md5 checksum in lower case.
     """
-    if product is not None:
-        if type(product) is dict and 'uuid' in product and 'host' in product:
-            md5_url = _checksum_url_from_uuid(product['uuid'],
-                                              host=product['host'])
-        elif type(product) is str:
-            md5_url = _checksum_url_from_identifier(product)
-        else:
-            return False
-
-    elif uuid is not None:
-        md5_url = _checksum_url_from_uuid(uuid)
-
-    response = resolve(md5_url)
-    if PY2:
-        return response.read().lower()
-    else:
-        return response.read().decode().lower()
+    return block(_md5, product=product, uuid=uuid)
 
 
 def exists(product):
@@ -920,7 +700,21 @@ def exists(product):
     return len(search_results) > 0
 
 
-def download(product, queue=None, stopqueue=True):
+def download(product):
+    if isinstance(product, list):
+        # Multiple downloads
+        # tty.screen.status(total=len(product))
+        tasks = [_single_download(p, return_md5=True) for p in product]
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(asyncio.gather(*tasks))
+    else:
+        # Single download
+        result = block(_single_download, product=product)
+
+    return result
+
+
+async def _single_download(product, return_md5=False):
     """Download a satellite product.
 
     Checks for file existence and MD5 checksum.
@@ -930,10 +724,8 @@ def download(product, queue=None, stopqueue=True):
     product : str or dict
         The name of the product to be downloaded from SciHub.
         Alternatively, a dictionary representing a search result from SciHub.
-    queue : multiprocessing.Manager.Queue, optional
-        A multiprocessing queue to submit status messages.
-    stopqueue : bool, optional
-        Whether to send a poison pill upon completion.
+    return_md5 : bool, optional
+        Whether to compute and return the md5 hash sum (default: False).
 
     Returns
     -------
@@ -944,13 +736,16 @@ def download(product, queue=None, stopqueue=True):
     if type(product) is dict:
         fdata = product
     else:
-        fdata = search({'identifier': os.path.splitext(product)[0]+'*'})[0]
+        fdata = await _search(
+            {'identifier': os.path.splitext(product)[0]+'*'}
+        )
+        fdata = fdata[0]
 
     satellite = utils.get_satellite(fdata['filename'])
     ext = CONFIG['SATELLITES'][satellite]['ext']
-    # suffix = CONFIG['SATELLITES'][satellite]['suffix']
     file_name = fdata['filename'] + ext
-    # file_name = os.path.splitext(product)[0] + '.zip'
+
+    pbar_key = file_name
 
     b_download = True
     b_file_okay = False
@@ -959,156 +754,123 @@ def download(product, queue=None, stopqueue=True):
     full_file_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'], file_name)
 
     #
-    # Establish authentication depending on the mission (S1/S2/S3)
-    #
-    # Connection.authenticate(satellite)
-
-    #
     # Check if file already exists in location:
     #
     if os.path.exists(full_file_path) and os.path.isfile(full_file_path):
 
+        # Create progress bar
+        # pbar = tty.screen[pbar_key]
+
         if not CONFIG['GENERAL']['CHECK_EXISTING']:
+            #
+            # File exists and won't be checked.
+            #
             msg = '{} Skipping existing - MD5 not checked'.format(file_name)
-            logging.debug(msg)
-            if queue is not None:
-                queue.put((file_name, {'desc': 'Skipping {name}'}))
-            #     queue.put((file_name, msg))
+            tty.screen[pbar_key] = 'Skipping {name}'
+            logger.debug(msg)
             b_download = False
+
         else:
-            if queue is not None:
-                queue.put((file_name,
-                          {'desc': 'Checking {name} ...'}))
-            #     queue.put((file_name,
-            #                '{} Exists - checking MD5 ...'.format(file_name)))
+            #
+            # File exists and will be checked for md5 consistency
+            #
             local_md5 = checksum.md5(full_file_path)
-            remote_md5 = md5(fdata)
+            remote_md5 = await _md5(fdata)
             if local_md5 == remote_md5:
                 msg = '{} Skipping download (MD5 okay)'.format(file_name)
-                logging.debug(msg)
-                if queue is not None:
-                    queue.put((file_name, {'desc': 'Skipping {name}'}))
-                #     queue.put((file_name, msg))
+                tty.screen[pbar_key] = 'Skipping {name} (okay)'
+                logger.debug(msg)
                 b_download = False
                 b_file_okay = True
             else:
                 msg = '{} MD5 wrong: redownloading ...'.format(file_name)
-                logging.debug(msg)
-                # if queue is not None:
-                #     queue.put((file_name, msg))
-
-    # if b_download and CONFIG['GENERAL']['SKIP_EXTRACTED'] and \
-    #         index.exists(file_name, where='local'):
-    #     msg = '{} Skipping download (index exists)'.format(file_name)
-    #     logging.debug(msg)
-    #     if queue is not None:
-    #         queue.put((file_name, msg))
-    #     b_download = False
-
-    # if b_download and CONFIG['GENERAL']['SKIP_UPLOADED'] and \
-    #         storage.exists(file_name):
-    #     msg = '{} Skipping download (already stored)'.format(file_name)
-    #     logging.debug(msg)
-    #     if queue is not None:
-    #         queue.put((file_name, msg))
-    #     b_download = False
+                # Don't create the progress bar just yet
+                # tty.screen[pbar_key] = 'Redownloading {name}'
+                logger.debug(msg)
 
     if b_download:
-        # if queue is not None:
-        #     queue.put((file_name, '{} Downloading ... '.format(file_name)))
-
         #
         # Retrials in case the MD5 hashsum fails
         #
         for i in range(CONFIG['GENERAL']['TRIALS']):
-            try:
-                complete = _download(fdata['url'], full_file_path, queue=queue)
-            except Exception as e:
-                logging.debug('{}: {}'.format(file_name, e))
-                complete = False
+            complete = await _download(fdata['url'], full_file_path,
+                                       return_md5=return_md5)
+            if return_md5:
+                complete, local_md5 = complete
 
             #
             # After download, check MD5 hashsum
             #
             if not complete:
-                logging.debug('{} Download failed, trial {:d}/{:d}.'.format(
-                        file_name, i+1, CONFIG['GENERAL']['TRIALS']))
-                if queue is not None:
-                    queue.put((file_name, {'desc': 'Retrying {name}'}))
-                #     queue.put((file_name,
-                #                '{} Retrying (trial {:d}/{:d})'
-                #                .format(file_name, i+1,
-                #                        CONFIG['GENERAL']['TRIALS'])))
+                #
+                # Download incomplete.
+                #
+                msg = '{} Download failed, trial {:d}/{:d}.'.format(
+                        file_name, i+1, CONFIG['GENERAL']['TRIALS'])
+                logger.debug(msg)
+                tty.screen[pbar_key] = 'Failed: {name}'
             else:
-                # if queue is not None:
-                #     queue.put((file_name,
-                #                '{} Downloaded - Checking MD5...'
-                #                .format(file_name)))
-                local_md5 = checksum.md5(full_file_path)
-                remote_md5 = md5(fdata)
+                #
+                # Download completed.
+                #
+                if not return_md5:
+                    local_md5 = checksum.md5(full_file_path)
+
+                remote_md5 = await _md5(fdata)
                 if local_md5 != remote_md5:
-                    logging.debug(
-                        '{} MD5 checksum failed, trial {:d}/{:d}.'.format(
-                            file_name, i+1, CONFIG['GENERAL']['TRIALS']))
-                    if queue is not None:
-                        queue.put((file_name,
-                                  {'desc': 'Retrying {name}'}))
-                    #     queue.put((file_name,
-                    #                '{} Retrying ... (trial {:d}/{:d})'
-                    #                .format(file_name, i+1,
-                    #                        CONFIG['GENERAL']['TRIALS'])))
+                    #
+                    # Download failed.
+                    #
+                    msg = '{} MD5 checksum failed, trial {:d}/{:d}.'.format(
+                            file_name, i+1, CONFIG['GENERAL']['TRIALS'])
+                    logger.debug(msg)
+                    tty.screen[pbar_key] = 'Failed: {name}'
                 else:
-                    logging.debug('{} MD5 okay'.format(file_name))
-                    if queue is not None:
-                        queue.put((file_name, {'desc': '{name} okay'}))
-                    #     queue.put((file_name,
-                    #                '{} Downloaded - MD5 okay'
-                    #                .format(file_name)))
+                    #
+                    # Download completed and successful.
+                    #
+                    msg = '{} MD5 okay'.format(file_name)
+                    logger.debug(msg)
+                    tty.screen[pbar_key] = 'MD5 okay: {name}'
                     b_file_okay = True
                     break
 
         if not b_file_okay:
             msg = '{} Download failed.'.format(file_name)
-            logging.warning(msg)
-            if queue is not None:
-                queue.put((file_name, {'desc': '{name} Failed'}))
-            #     queue.put((file_name, msg))
+            logger.warning(msg)
+            tty.screen[pbar_key] = 'Failed: {name}'
 
     if CONFIG['GENERAL']['DOWNLOAD_PREVIEW']:
         full_preview_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'],
                                          fdata['filename']+'.jpeg')
-
         #
         # If not yet done, download preview file
         #
         if not os.path.exists(full_preview_path) or \
                 not os.path.isfile(full_preview_path):
-            if not download(fdata['preview'], full_preview_path, quiet=True):
-                logging.info('  Preview not available.')
-
-    #
-    # Download done (or failed).
-    # Send poison pill to parent process.
-    #
-    if stopqueue and queue is not None:
-        queue.put((file_name, ))
+            if not _download(fdata['preview'], full_preview_path):
+                logger.info('  Preview not available.')
 
     if b_file_okay:
         #
         # File has been downloaded successfully OR already exists
         # --> Return the file path
         #
-        logging.debug('Download successful: {}'.format(full_file_path))
-        return full_file_path
+        msg = 'Download successful: {}'.format(full_file_path)
+        logger.debug(msg)
+        tty.screen[pbar_key] = 'Successful: {name}'
+        if return_md5:
+            return full_file_path, local_md5
+        else:
+            return full_file_path
 
     elif b_download and not complete:
         #
         # File download failed --> Return FALSE
         #
-        logging.error('Download failed: {}'.format(file_name))
-        if queue is not None:
-            queue.put((file_name, {'desc': '{name} Failed'}))
-        #     queue.put((file_name, 'Download failed: {}'.format(file_name)))
+        msg = 'Download failed: {}'.format(file_name)
+        logger.error(msg)
+        tty.screen[pbar_key] = 'Failed: {name}'
         return False
 
     else:
@@ -1118,43 +880,31 @@ def download(product, queue=None, stopqueue=True):
         return False
 
 
-def download_many(products):
-    """Downloads all requested files in parallel, checking for correct MD5 sums.
+async def _get_remote_files_per_satellite(files, satellite):
+        product_names = [os.path.splitext(os.path.split(fpath)[1])[0]
+                         for fpath in files]
+        chunksize = 10
+        queries = []
+        for products in utils.chunks(product_names, chunksize):
+            query_string = '({})'.format(
+                    ' OR '.join(['identifier:{}'.format(product)
+                                 for product in products])
+            )
+            queries.append({'query': query_string, 'satellite': satellite})
+        tasks = [_search(q) for q in queries]
+        result = await asyncio.gather(*tasks)
+        return utils.flatten(result)
 
-    Parameters
-    ----------
-    file_list : list of dict
-        A list of dictionaries for each requested file. Can be obtained from
-        `scihub_connect.Query.get_file_list()`
-    """
-    #
-    # Parallel downloads
-    #
-    counter = 0
-    total = len(products)
-    q = multiprocessing.Manager().Queue()
-    pool = multiprocessing.Pool(processes=CONFIG['GENERAL']['N_DOWNLOADS'])
-    fn = partial(download, queue=q)
-    result = pool.map_async(fn, products)
-    while not result.ready():
-        while True:
-            try:
-                msg = q.get(timeout=0.5)
-                # fname, msg = q.get(timeout=0.5)
-            except multiprocessing.queues.Empty:
-                break
-            else:
-                # if msg is None:
-                if len(msg) == 1:
-                    counter += 1
-                    tty.set_progress(counter, total)
-                else:
-                    fname, value = msg
-                    tty.update(fname, value)
-                    # tty.update(fname, msg)
-    result.wait()
-    tty.finish_status()
-    tty.result('All done!')
+
+def _get_remote_files(files):
+    tasks = []
+    for sat in CONFIG['SATELLITES']:
+        sat_files = [f for f in files
+                     if os.path.split(f)[1].startswith(sat)]
+        tasks.append(_get_remote_files_per_satellite(sat_files, sat))
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(asyncio.gather(*tasks))
+    return utils.flatten(results)
 
 
 def redownload(local_file_list):
@@ -1168,29 +918,6 @@ def redownload(local_file_list):
     local_file_list : list of str
         A list of local files to be redownloaded from the server.
     """
-    def _get_remote_files(local_files, satellite):
-        product_names = [os.path.splitext(os.path.split(fpath)[1])[0]
-                         for fpath in local_files]
-        chunksize = 10
-        remote_file_list = []
-        for products in utils.chunks(product_names, chunksize):
-            query_string = '({})'.format(
-                    ' OR '.join(['identifier:{}'.format(product)
-                                 for product in products])
-            )
-            try:
-                remote_file_list.extend(
-                    search({'query': query_string, 'satellite': satellite})
-                )
-            except Exception as e:
-                logging.warning('Skipping downloads: {}'.format(e))
-        return remote_file_list
-
-    remote_files = []
-    for sat in CONFIG['SATELLITES']:
-        files = [f for f in local_file_list
-                 if os.path.split(f)[1].startswith(sat)]
-        remote_files.extend(_get_remote_files(files, sat))
-
-    logging.info('DOWNLOADING {}'.format(len(remote_files)))
-    download_many(remote_files)
+    remote_files = _get_remote_files(local_file_list)
+    logger.info('DOWNLOADING {}'.format(len(remote_files)))
+    download(remote_files)

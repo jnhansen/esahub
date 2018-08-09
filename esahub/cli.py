@@ -11,6 +11,7 @@ import time
 import logging
 import datetime
 from .config import CONFIG
+from . import tty
 
 
 locale.setlocale(locale.LC_ALL, '')
@@ -61,14 +62,14 @@ def parse_cli_options(args=None):
     for p in (parser_get, parser_ls, parser_doctor):
         p.add_argument('-N', '--nproc', type=int,
                        help='Number of simultaneous processes/downloads.')
+        p.add_argument('--quiet', action='store_true',
+                       help='Suppress terminal output.')
         p.add_argument('--log', action='store_true',
                        help='Write a log file.')
         p.add_argument('--debug', action='store_true',
                        help='Enable debugging.')
         p.add_argument('--email', action='store_true',
                        help='Send an email report.')
-        p.add_argument('--gui', action='store_true',
-                       help='Use GUI.')
 
     # ARGUMENTS FOR GET AND DOCTOR
     # -------------------------------------------------------------------------
@@ -84,11 +85,17 @@ def parse_cli_options(args=None):
             choices=list(CONFIG['SATELLITES'].keys()),
             help='Satellite')
         p.add_argument(
-            '--mission',
+            '-m', '--mission',
             help="Select the mission (Sentinel-1, Sentinel-2, Sentinel-3).")
         p.add_argument(
             '--type',
             help="Select products matching specified product type (e.g. GRD).")
+        p.add_argument(
+            '--orbit',
+            help="Orbit direction (ASC, DESC).")
+        p.add_argument(
+            '--id',
+            help="Product identifier, may include wildcards (*).")
         p.add_argument(
             '--server', choices=list(CONFIG['SERVERS'].keys()),
             help="Specify the dowload server.")
@@ -106,7 +113,7 @@ def parse_cli_options(args=None):
                  "file. You can add multiple options.\n"
                  "  Examples: 'Ireland_Mace_Head'")
         p.add_argument(
-            '-t', '--time'
+            '-t', '--time',
             help="Shortcuts for specifying time intervals. "
                  "Pass any date or date range in string format.\n"
                  "Special options include:\n"
@@ -121,19 +128,19 @@ def parse_cli_options(args=None):
             '--force', action='store_true',
             help='Force download even if index existing.')
         p.add_argument(
-            '--in', help='Read download list from file.')
+            '-i', '--in', help='Read download list from file.')
 
     # ARGUMENTS FOR LS ONLY
     # -------------------------------------------------------------------------
     for p in (parser_ls,):
         p.add_argument(
-            '--out', help='Write list to file.')
+            '-o', '--out', help='Write list to file.')
 
     # ARGUMENTS FOR DOCTOR ONLY
     # -------------------------------------------------------------------------
     for p in (parser_doctor,):
         p.add_argument(
-            '-m', '--mode',
+            '--mode',
             help="Specify the mode for file checking. Options include:\n"
                  "  file - check if archives are valid zip or "
                  "netcdf files (very fast).\n"
@@ -166,20 +173,14 @@ def set_config(args):
     if not_none(args, 'nproc'):
         CONFIG['GENERAL']['N_DOWNLOADS'] = \
             CONFIG['GENERAL']['N_PROC'] = args['nproc']
-    # if not_none(args, 'quiet'):
-    #     CONFIG['GENERAL']['QUIET'] = args['quiet']
+    if not_none(args, 'quiet'):
+        CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
-        CONFIG['GENERAL']['TMP_DIR'] = args['dir']
-    if not_none(args, 'target'):
-        CONFIG['GENERAL']['DATA_DIR'] = args['target']
-    if not_none(args, 'output'):
-        CONFIG['GENERAL']['SOLR_INDEX_FILE'] = args['output']
+        CONFIG['GENERAL']['DAT_DIR'] = args['dir']
     if not_none(args, 'email'):
         CONFIG['GENERAL']['SEND_EMAIL'] = args['email']
     if not_none(args, 'log'):
         CONFIG['GENERAL']['LOGGING'] = args['log']
-    if not_none(args, 'gui'):
-        CONFIG['GENERAL']['USE_GUI'] = args['gui']
 
     if not_none(args, 'sat'):
         CONFIG['GENERAL']['QUERY']['satellite'] = args['sat']
@@ -195,6 +196,10 @@ def set_config(args):
         CONFIG['GENERAL']['QUERY']['time'] = args['time']
     if not_none(args, 'type'):
         CONFIG['GENERAL']['QUERY']['type'] = args['type']
+    if not_none(args, 'orbit'):
+        CONFIG['GENERAL']['QUERY']['orbit'] = args['orbit']
+    if not_none(args, 'id'):
+        CONFIG['GENERAL']['QUERY']['id'] = args['id']
     if not_none(args, 'query'):
         CONFIG['GENERAL']['QUERY']['query'] = args['query']
 
@@ -205,13 +210,16 @@ def set_config(args):
 
 
 # -----------------------------------------------------------------------------
-def shutdown():
-    from esahub import tty
+def interrupt():
     msg = 'Execution interrupted manually.'
     logger.warning(msg)
-    tty.quit()
-    print(msg, file=sys.stderr)
+    tty.screen.result(msg)
+    shutdown()
     sys.exit()
+
+
+def shutdown():
+    del tty.screen
 
 
 def main():
@@ -248,14 +256,10 @@ def main():
     #
     # These modules MUST be imported AFTER altering the CONFIG.
     #
-    from esahub import tty, main
+    from esahub import main
 
     try:
         a = time.time()
-
-        tty.init()
-        if CONFIG['GENERAL']['USE_GUI']:
-            tty.header(program)
 
         if cmd == 'doctor':
             main.doctor(delete=args['delete'], repair=args['repair'])
@@ -267,7 +271,7 @@ def main():
             main.get()
 
     except KeyboardInterrupt:
-        shutdown()
+        interrupt()
 
     finally:
         b = time.time()
@@ -278,11 +282,7 @@ def main():
             len(CONFIG['GENERAL']['EMAIL_REPORT_RECIPIENTS']):
         main.email()
 
-    if CONFIG['GENERAL']['USE_GUI']:
-        try:
-            tty.wait_for_quit()
-        except KeyboardInterrupt:
-            shutdown()
+    shutdown()
 
 
 if __name__ == '__main__':

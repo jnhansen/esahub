@@ -19,8 +19,6 @@ GENERAL:
       -
 
   # -------------------------------------------------------------------------------------------- #
-  # Whether to use a curses GUI (experimental)
-  USE_GUI: No
   # Whether to suppress terminal output
   QUIET: No
   # Whether to download preview images if available
@@ -109,30 +107,37 @@ SERVERS:
     host: 'https://scihub.copernicus.eu/s3'
     user: 's3guest'
     password: 's3guest'
+    downloads: 4
   S5P:
     host: 'https://s5phub.copernicus.eu/dhus'
     user: 's5pguest'
     password: 's5pguest'
+    downloads: 4
   API:
     host: 'https://scihub.copernicus.eu/apihub'
     user: ''
     password: ''
+    downloads: 2
   DHUS:
     host: 'https://scihub.copernicus.eu/dhus'
     user: ''
     password: ''
+    downloads: 2
   TMP:
     host: 'https://tmphub.copernicus.eu/dhus'
     user: ''
     password: ''
+    downloads: 2
   COLHUB1:
     host: 'https://colhub.copernicus.eu/dhus'
     user: ''
     password: ''
+    downloads: 10
   COLHUB2:
     host: 'https://colhub2.copernicus.eu/dhus'
     user: ''
     password: ''
+    downloads: 10
 
 
 # -------------------------------------------------------------------------------------------- #

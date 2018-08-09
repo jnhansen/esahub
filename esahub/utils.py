@@ -9,6 +9,8 @@ from dateutil.tz import tzutc
 import re
 import json
 from distutils.spawn import find_executable
+from collections import OrderedDict
+
 
 PY2 = sys.version_info < (3, 0)
 DATE_FMT = '%Y-%m-%dT%H:%M:%SZ'
@@ -62,8 +64,9 @@ def parse_datetime(value, dayfirst=True, force=None):
 
         # Determine which attributes have actually been specified.
         attrs = ['year', 'month', 'day', 'hour', 'minute', 'second']
-        given_attrs = set([attr for attr in attrs if
-                        getattr(parsed[1], attr) == getattr(parsed[0], attr)])
+        given_attrs = set(
+            [attr for attr in attrs if
+             getattr(parsed[1], attr) == getattr(parsed[0], attr)])
 
         # If some attributes are left out, return a time span.
         if given_attrs == set(['year']):
@@ -78,7 +81,7 @@ def parse_datetime(value, dayfirst=True, force=None):
             return start
 
         return (start, end)
-    
+
     splitters = ['to', '-', ',']
     try:
         stripped = value.strip()
@@ -109,7 +112,7 @@ def parse_datetime(value, dayfirst=True, force=None):
                 if isinstance(end, tuple):
                     end = end[1]
                 return start, end
-        
+
     raise ValueError("Could not parse as datetime: %s" % value)
 
 
@@ -238,6 +241,42 @@ def h2b(hstr, suffix='B'):
 # -----------------------------------------------------------------------------
 # List and dict operations
 # -----------------------------------------------------------------------------
+def flatten(l):
+    """Flatten a list of lists.
+
+    Parameters
+    ----------
+    l : list of lists
+        A nested list
+
+    Returns
+    -------
+    list
+        A flat list
+    """
+    return [item for sublist in l for item in sublist]
+
+
+def unique_by(l, fn):
+    """Return a filtered list such that a given function is unique
+    for each element of the list.
+
+    Parameters
+    ----------
+    l : list
+        A list of arbitrary objects.
+    fn : function
+        Must return a hashable object.
+
+    Returns
+    -------
+    list
+        A list of unique elements according to `fn`.
+    """
+    by_key = OrderedDict(zip([fn(_) for _ in l], l))
+    return list(by_key.values())
+
+
 def chunks(l, n):
     """Yield successive n-sized chunks from l.
 
