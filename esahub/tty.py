@@ -6,7 +6,10 @@ from tqdm._utils import _environ_cols_wrapper
 
 
 def TERM_WIDTH():
-    return _environ_cols_wrapper()(sys.stdout)
+    if sys.stdout.isatty():
+        return _environ_cols_wrapper()(sys.stdout)
+    else:
+        return 0
 
 
 BAR = "{desc} {percentage:3.0f}% |{bar}| " \
