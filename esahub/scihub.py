@@ -261,19 +261,21 @@ def parse_page(xml):
     return file_list
 
 
-async def _files_from_url(url):
+async def _files_from_url(url, verbose=False):
     xml = await _resolve(url)
     result = parse_page(xml.encode('utf-8'))
-    tty.screen.status(progress=len(result))
+    if verbose:
+        tty.screen.status(progress=len(result))
     return result
 
 
-async def _get_file_list_from_url(url, limit=None):
+async def _get_file_list_from_url(url, limit=None, verbose=False):
     # Parse first page to get total number of results.
     total_results = await get_total_results(url)
     host = urlparse(url).netloc
-    tty.screen.status(desc='Querying {host}'.format(host=host),
-                      total=total_results, mode='bar')
+    if verbose:
+        tty.screen.status(desc='Querying {host}'.format(host=host),
+                          total=total_results, mode='bar')
 
     if limit is None:
         total = total_results
@@ -282,7 +284,7 @@ async def _get_file_list_from_url(url, limit=None):
 
     urls = [url] + [u for u in _generate_next_url(url, total=total)]
 
-    tasks = [_files_from_url(u) for u in urls]
+    tasks = [_files_from_url(u, verbose=verbose) for u in urls]
     results = await asyncio.gather(*tasks)
     result = utils.flatten(results)
 
@@ -598,7 +600,8 @@ def search(*args, **kwargs):
     return block(_search, *args, **kwargs)
 
 
-async def _search(query={}, server='auto', limit=None, **kwargs):
+async def _search(query={}, server='auto', limit=None, verbose=False,
+                  **kwargs):
     """ Search SciHub for satellite products.
     Parameters
     ----------
@@ -645,7 +648,7 @@ async def _search(query={}, server='auto', limit=None, **kwargs):
         )
         logger.debug('Trying server {}: {}'.format(servername, url))
         tasks.append(
-            _get_file_list_from_url(url, limit=limit)
+            _get_file_list_from_url(url, limit=limit, verbose=verbose)
         )
     results = await asyncio.gather(*tasks)
     results = utils.flatten(results)

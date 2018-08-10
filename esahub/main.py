@@ -36,7 +36,7 @@ def query_file_list(query=None, limit=None):
     else:
         if query is None:
             query = CONFIG['GENERAL']['QUERY']
-        file_list = scihub.search(query, limit=limit)
+        file_list = scihub.search(query, limit=limit, verbose=True)
 
     return file_list
 
@@ -83,7 +83,7 @@ def ls(query=None, quiet=False):
     tty.screen.status('Searching ...', mode='static')
     if query is None:
         query = CONFIG['GENERAL']['QUERY']
-    file_list = scihub.search(query)
+    file_list = scihub.search(query, verbose=True)
     size = 0.0
     for f in file_list:
         size += f['size']
@@ -124,7 +124,9 @@ def doctor(delete=False, repair=False):
     msg = 'Checking {:d} files for consistency (mode: {}).'.format(
             len(all_files), CONFIG['GENERAL']['CHECK_MODE'])
     logging.info(msg)
-    # tty.screen.status(desc=msg, reset=True, bar=True, unit='', scale=False)
+
+    tty.screen.status(desc=msg, reset=True, mode='bar', total=len(all_files),
+                      unit='', scale=False)
 
     #
     # Check every file in the list.
@@ -138,8 +140,8 @@ def doctor(delete=False, repair=False):
     result = loop.run_until_complete(asyncio.gather(*tasks))
     bad_files = [status[0] for status in result if status[1] is False]
     n_bad_files = len(bad_files)
-    msg = '{0:d}/{1:d} files corrupt.'.format(n_bad_files,
-                                              len(all_files))
+    msg = '{0:d}/{1:d} files corrupt.'.format(
+        n_bad_files, len(all_files))
     logging.info(msg)
     tty.screen.result(msg)
 

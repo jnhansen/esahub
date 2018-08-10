@@ -65,6 +65,8 @@ async def _check_file(full_file_path, mode):
     """
     message = None
 
+    pbar_key = os.path.split(full_file_path)[1]
+
     if mode == 'file':
         #
         # Check if the archive is a valid zip archive or
@@ -76,11 +78,10 @@ async def _check_file(full_file_path, mode):
                 zip_ref = zipfile.ZipFile(full_file_path, 'r')
                 zip_ref.close()
             except ZIP_ERROR as e:
-                message = '{} {}'.format(tty.error('BAD ZIP FILE:'),
-                                         full_file_path)
+                message = tty.error('BAD ZIP FILE')
                 healthy = False
             else:
-                message = '{} {}'.format(tty.success('OKAY:'), full_file_path)
+                message = tty.success('OKAY')
                 healthy = True
         elif ext == '.nc':
             if not NETCDF_INSTALLED:
@@ -90,15 +91,13 @@ async def _check_file(full_file_path, mode):
                 nc_ref = Dataset(full_file_path, 'r')
                 nc_ref.close()
             except (OSError, IOError) as e:
-                message = '{} {}'.format(tty.error('BAD NETCDF FILE:'),
-                                         full_file_path)
+                message = tty.error('BAD NETCDF FILE')
                 healthy = False
             else:
-                message = '{} {}'.format(tty.success('OKAY:'), full_file_path)
+                message = tty.success('OKAY')
                 healthy = True
         else:
-            message = '{} {}'.format(tty.error('UNKNOWN FILE FORMAT:'),
-                                     full_file_path)
+            message = tty.error('UNKNOWN FILE FORMAT')
             healthy = False
 
     elif mode == 'md5':
@@ -107,19 +106,19 @@ async def _check_file(full_file_path, mode):
         #
         remote_md5 = await scihub._md5(product=full_file_path)
         if remote_md5 is False:
-            message = '{} {}'.format(tty.error('MD5 NOT FOUND:'),
-                                     full_file_path)
+            message = tty.error('MD5 NOT FOUND')
             healthy = False
         else:
             if checksum.md5(full_file_path) == remote_md5:
-                message = '{} {}'.format(tty.success('MD5 OKAY:'),
-                                         full_file_path)
+                message = tty.success('MD5 OKAY')
                 healthy = True
             else:
-                message = '{} {}'.format(tty.error('FILE CORRUPT:'),
-                                         full_file_path)
+                message = tty.error('FILE CORRUPT')
                 healthy = False
 
     result = (full_file_path, healthy, message)
+
+    tty.screen[pbar_key] = (message + ': {name}', tty.NOBAR)
+    tty.screen.status(progress=1)
 
     return result
