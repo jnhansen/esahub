@@ -69,7 +69,6 @@ $ esahub [cmd] [args] ...
 | `--id`           | <code>&lt;ID&gt;</code>       | `ls`, `get`    | product identifier, may include wildcards (`*`), e.g. `*SDV*`
 | `-q`, `--query`  | <code>&lt;QUERY&gt;</code>    | `ls`, `get`    | custom query for SciHub, e.g. for single archive: `identifier:...`
 | -----
-| `-N`, `--nproc`  | <code>&lt;N&gt;</code>        | `doctor`       | number of parallel processes (defaults to config `GENERAL.N_PROC`)
 | `--log`          |                               | all           | write log file
 | `--quiet`        |                               | all           | Suppress terminal output
 | `--mode`         | <code>&lt;MODE&gt;</code>     | `doctor`      | <code>zip&#124;file</code>

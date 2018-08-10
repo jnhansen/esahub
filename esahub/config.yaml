@@ -44,8 +44,6 @@ GENERAL:
   ENTRIES: 100
   # Number of simultaneous queries to SciHub (ls command)
   N_SCIHUB_QUERIES: 20
-  # The number of processes for parallel operations. Currently only used in main.doctor
-  N_PROC: 4
 
   # -------------------------------------------------------------------------------------------- #
   # Specify default query parameters here.
