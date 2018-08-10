@@ -307,7 +307,7 @@ class ScihubSearchTestCase(TestCase):
                     distance = wkt_loads(f['coords']).distance(
                         wkt_loads(ref_coords))
                     utils.eprint('Distance: {}'.format(distance))
-                    self.assertLessEqual(distance, 0.3)
+                    self.assertLessEqual(distance, 0.5)
 
     def test_get_file_list(self):
         q = {'mission': 'Sentinel-3'}
