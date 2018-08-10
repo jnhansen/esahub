@@ -11,7 +11,6 @@ import time
 import logging
 import datetime
 from .config import CONFIG
-from . import tty
 
 
 locale.setlocale(locale.LC_ALL, '')
@@ -205,19 +204,7 @@ def set_config(args):
 
 
 # -----------------------------------------------------------------------------
-def interrupt():
-    msg = 'Execution interrupted manually.'
-    logger.warning(msg)
-    tty.screen.result(tty.error(msg))
-    shutdown()
-    sys.exit()
-
-
-def shutdown():
-    del tty.screen
-
-
-def main():
+def cli_main():
     """ Execute selected command. """
     args = parse_cli_options()
     set_config(args)
@@ -251,7 +238,17 @@ def main():
     #
     # These modules MUST be imported AFTER altering the CONFIG.
     #
-    from esahub import main
+    from . import tty, main
+
+    def shutdown():
+        del tty.screen
+
+    def interrupt():
+        msg = 'Execution interrupted manually.'
+        logger.warning(msg)
+        tty.screen.result(tty.error(msg))
+        shutdown()
+        sys.exit()
 
     try:
         a = time.time()
@@ -281,4 +278,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    cli_main()

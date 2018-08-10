@@ -115,7 +115,11 @@ class Screen():
     def result(self, text):
         # Should only be called after all progress bars have been created.
         if self._result is None:
-            self._result = tqdm(disable=CONFIG['GENERAL']['QUIET'],
+            try:
+                disable = CONFIG['GENERAL']['QUIET']
+            except TypeError:
+                disable = False
+            self._result = tqdm(disable=disable,
                                 total=FAKE_TOTAL,
                                 desc=text,
                                 bar_format=NOBAR,
@@ -123,8 +127,6 @@ class Screen():
                                 leave=True)
         else:
             self._result.set_description_str(text)
-        # While we are at it, refresh the status.
-        self._status.refresh()
 
     def __getitem__(self, key):
         if key not in self._lines:
