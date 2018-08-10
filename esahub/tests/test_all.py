@@ -638,6 +638,7 @@ class UtilsTestCase(TestCase):
                                           _dt(2018, 1, 2, 0, 0, 0))),
             ('to Jan 2018', (None, _dt(2018, 2, 1, 0, 0, 0))),
             ('2015 -', (_dt(2015, 1, 1, 0, 0, 0), None)),
+            ('to 2017-09-01T00:00:00', (None, _dt(2017, 9, 1, 0, 0, 0)))
         ]
         for date_str, date_obj in dates:
             with self.subTest(date_str=date_str):

@@ -303,14 +303,10 @@ def _parse_time_parameter(value):
 
     else:
         parsed = utils.parse_datetime(value)
-        if not isinstance(parsed, tuple):
-            start = datetime.strftime(parsed, DATETIME_FMT)
-            end = start
-        else:
-            if parsed[0] is not None:
-                start = datetime.strftime(parsed[0], DATETIME_FMT)
-            if parsed[1] is not None:
-                end = datetime.strftime(parsed[1], DATETIME_FMT)
+        if parsed[0] is not None:
+            start = datetime.strftime(parsed[0], DATETIME_FMT)
+        if parsed[1] is not None:
+            end = datetime.strftime(parsed[1], DATETIME_FMT)
 
     return start, end
 
