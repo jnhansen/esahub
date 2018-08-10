@@ -22,6 +22,7 @@ PREFIXES = {
     'doc': 'http://www.w3.org/2005/Atom',
     'gml': 'http://www.opengis.net/gml'
 }
+DOWNLOAD_SUFFIX = '.download'
 DOWNLOAD_URL_PATTERN = \
     "{host}/odata/v1/Products('{uuid}')/$value"
 CHECKSUM_URL_PATTERN = \
@@ -127,7 +128,7 @@ async def _ping_single(server):
         return (server, response.status)
 
 
-async def _download(url, destination, return_md5=False):
+async def _download(url, destination, return_md5=False, cont=True):
     """Downloads a file from the remote server into the specified destination.
 
     Parameters
@@ -136,8 +137,8 @@ async def _download(url, destination, return_md5=False):
         The source URL.
     destination : str
         The local target file path.
-    pbar : tqdm progress bar, optional
-        Update progress bar.
+    cont : bool, optional
+        Continue partial downloads (default: True).
 
     Returns
     -------
@@ -149,21 +150,33 @@ async def _download(url, destination, return_md5=False):
     #
     path, file_name = os.path.split(destination)
     os.makedirs(path, exist_ok=True)
-    pbar_key = file_name
+    pbar_key = file_name.rstrip(DOWNLOAD_SUFFIX)
 
     if return_md5:
         hash_md5 = hashlib.md5()
 
+    headers = {}
+    if cont and os.path.isfile(destination):
+        local_size = os.path.getsize(destination)
+        headers['Range'] = 'bytes={}-'.format(local_size)
+        with open(destination, 'rb') as f:
+            hash_md5.update(f.read())
+        tty.screen.status(progress=local_size)
+    else:
+        local_size = 0
+
     server = _get_server_from_url(url)
-    async with DOWNLOAD[server].get(url, timeout=None) as response:
+    async with DOWNLOAD[server].get(url, timeout=None, headers=headers) \
+            as response:
         size = int(response.headers['Content-Length'])
         # Create progress bar only now:
         pbar = tty.screen[pbar_key]
-        pbar.n = 0
-        pbar.total = size
+        pbar.n = local_size
+        pbar.total = size + local_size
         pbar.refresh()
 
-        with open(destination, 'wb') as f:
+        mode = 'ab' if cont else 'wb'
+        with open(destination, mode) as f:
             async for data in response.content.iter_chunked(CHUNK):
                 if return_md5:
                     hash_md5.update(data)
@@ -698,20 +711,22 @@ def exists(product):
 
 
 def download(product):
+    cont = CONFIG['GENERAL']['CONTINUE']
     if isinstance(product, list):
         # Multiple downloads
         # tty.screen.status(total=len(product))
-        tasks = [_single_download(p, return_md5=True) for p in product]
+        tasks = [_single_download(p, return_md5=True, cont=cont)
+                 for p in product]
         loop = asyncio.get_event_loop()
         result = loop.run_until_complete(asyncio.gather(*tasks))
     else:
         # Single download
-        result = block(_single_download, product=product)
+        result = block(_single_download, product=product, cont=cont)
 
     return result
 
 
-async def _single_download(product, return_md5=False):
+async def _single_download(product, return_md5=False, cont=True):
     """Download a satellite product.
 
     Checks for file existence and MD5 checksum.
@@ -723,6 +738,8 @@ async def _single_download(product, return_md5=False):
         Alternatively, a dictionary representing a search result from SciHub.
     return_md5 : bool, optional
         Whether to compute and return the md5 hash sum (default: False).
+    cont : bool, optional
+        Continue partial downloads (default: True).
 
     Returns
     -------
@@ -749,11 +766,12 @@ async def _single_download(product, return_md5=False):
     complete = False
 
     full_file_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'], file_name)
+    download_path = full_file_path + DOWNLOAD_SUFFIX
 
     #
     # Check if file already exists in location:
     #
-    if os.path.exists(full_file_path) and os.path.isfile(full_file_path):
+    if os.path.exists(download_path) and os.path.isfile(download_path):
 
         # Create progress bar
         # pbar = tty.screen[pbar_key]
@@ -772,10 +790,10 @@ async def _single_download(product, return_md5=False):
             #
             # File exists and will be checked for md5 consistency
             #
-            local_md5 = checksum.md5(full_file_path)
+            local_md5 = checksum.md5(download_path)
             remote_md5 = await _md5(fdata)
             if local_md5 == remote_md5:
-                file_size = os.path.getsize(full_file_path)
+                file_size = os.path.getsize(download_path)
                 msg = '{} Skipping download (MD5 okay)'.format(file_name)
                 tty.screen[pbar_key] = (tty.success('Exists') + ': {name}',
                                         tty.NOBAR)
@@ -783,10 +801,14 @@ async def _single_download(product, return_md5=False):
                 logger.debug(msg)
                 b_download = False
                 b_file_okay = True
+
+            elif cont:
+                # Continue download
+                b_download = True
+
             else:
                 msg = '{} MD5 wrong: redownloading ...'.format(file_name)
                 # Don't create the progress bar just yet
-                # tty.screen[pbar_key] = 'Redownloading {name}'
                 logger.debug(msg)
 
     if b_download:
@@ -794,8 +816,8 @@ async def _single_download(product, return_md5=False):
         # Retrials in case the MD5 hashsum fails
         #
         for i in range(CONFIG['GENERAL']['TRIALS']):
-            complete = await _download(fdata['url'], full_file_path,
-                                       return_md5=return_md5)
+            complete = await _download(fdata['url'], download_path,
+                                       return_md5=return_md5, cont=cont)
             if return_md5:
                 complete, local_md5 = complete
 
@@ -816,7 +838,7 @@ async def _single_download(product, return_md5=False):
                 # Download completed.
                 #
                 if not return_md5:
-                    local_md5 = checksum.md5(full_file_path)
+                    local_md5 = checksum.md5(download_path)
 
                 remote_md5 = await _md5(fdata)
                 if local_md5 != remote_md5:
@@ -861,6 +883,7 @@ async def _single_download(product, return_md5=False):
         # File has been downloaded successfully OR already exists
         # --> Return the file path
         #
+        os.rename(download_path, full_file_path)
         msg = 'Download successful: {}'.format(full_file_path)
         logger.debug(msg)
         tty.screen[pbar_key] = (tty.success('Successful') + ': {name}',

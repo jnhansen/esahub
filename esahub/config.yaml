@@ -26,6 +26,8 @@ GENERAL:
   # Whether to check the consistency of existing files
   # conflicting with the current download
   CHECK_EXISTING: Yes
+  # Whether to continue incomplete downloads
+  CONTINUE: Yes
   # Default mode for consistency checking: `md5`|`file`
   # `file` is very fast but doesn't guarantee consistency
   # `md5` is slower and only works when the file (still) exists on SciHub

@@ -59,15 +59,15 @@ $ esahub [cmd] [args] ...
 | `-d`, `--dir`    | <code>&lt;DIR&gt;</code>      | all           | raw data directory (defaults to config `GENERAL.DATA_DIR`)
 | `-o`, `--out`    | <code>&lt;FILE&gt;</code>     | `ls`          | write files to JSON
 | `-i`, `--in`     | <code>&lt;FILE&gt;</code>     | `get`         | read files from JSON
-| `-m`, `--mission`| <code>&lt;MISSION&gt;</code>  | `ls`, `get`    | e.g. `Sentinel-1`, `Sentinel-2`, `Sentinel-3`
-| `-g`, `--geo`    | <code>&lt;WKT&gt;</code>      | `ls`, `get`    | geospatial location in WKT format
-| `--location`     | <code>&lt;LOCATION&gt;</code> | `ls`, `get`    | location as defined in config `LOCATIONS`
-| `-t`, `--time`   | <code>&lt;ARG&gt;</code>      | `ls`, `get`    | Supports a variety of datetime string formats.
-| `--type`         | <code>&lt;TYPE&gt;</code>     | `ls`, `get`    | e.g. `GRD`
-| `--orbit`        | <code>&lt;ORBIT&gt;</code>    | `ls`, `get`    | `ASC` or `DESC`
-| `--id`           | <code>&lt;ID&gt;</code>       | `ls`, `get`    | product identifier, may include wildcards (`*`), e.g. `*SDV*`
-| `-q`, `--query`  | <code>&lt;QUERY&gt;</code>    | `ls`, `get`    | custom query for SciHub, e.g. for single archive: `identifier:...`
-| -----
+| `-m`, `--mission`| <code>&lt;MISSION&gt;</code>  | `ls`, `get`   | e.g. `Sentinel-1`, `Sentinel-2`, `Sentinel-3`
+| `-g`, `--geo`    | <code>&lt;WKT&gt;</code>      | `ls`, `get`   | geospatial location in WKT format
+| `--location`     | <code>&lt;LOCATION&gt;</code> | `ls`, `get`   | location as defined in config `LOCATIONS`
+| `-t`, `--time`   | <code>&lt;ARG&gt;</code>      | `ls`, `get`   | Supports a variety of datetime string formats.
+| `--type`         | <code>&lt;TYPE&gt;</code>     | `ls`, `get`   | e.g. `GRD`
+| `--orbit`        | <code>&lt;ORBIT&gt;</code>    | `ls`, `get`   | `ASC` or `DESC`
+| `--id`           | <code>&lt;ID&gt;</code>       | `ls`, `get`   | product identifier, may include wildcards (`*`), e.g. `*SDV*`
+| `-q`, `--query`  | <code>&lt;QUERY&gt;</code>    | `ls`, `get`   | custom query for SciHub, e.g. for single archive: `identifier:...`
+| `--restart`      |                               | `get`         | Force restart incomplete downloads
 | `--log`          |                               | all           | write log file
 | `--quiet`        |                               | all           | Suppress terminal output
 | `--mode`         | <code>&lt;MODE&gt;</code>     | `doctor`      | <code>zip&#124;file</code>
