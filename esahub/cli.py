@@ -217,7 +217,7 @@ def shutdown():
     del tty.screen
 
 
-def main():
+def cli_main():
     """ Execute selected command. """
     args = parse_cli_options()
     set_config(args)
@@ -251,7 +251,7 @@ def main():
     #
     # These modules MUST be imported AFTER altering the CONFIG.
     #
-    from esahub import main
+    from . import main
 
     try:
         a = time.time()
@@ -281,4 +281,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    cli_main()
