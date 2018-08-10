@@ -55,7 +55,7 @@ $ esahub [cmd] [args] ...
 ### Options
 
 | Option           | Argument                      | Available for | Description
-|:-----------------|:------------------------------|:--------------|:------------------------------------
+|:-----------------|:------------------------------|:--------------|:------------------
 | <td colspan=1><code>&lt;SAT&gt;</code></td>      | all           | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
 | `-d`, `--dir`    | <code>&lt;DIR&gt;</code>      | all           | raw data directory (defaults to config `GENERAL.DATA_DIR`)
 | `-o`, `--out`    | <code>&lt;FILE&gt;</code>     | `ls`          | write files to JSON
@@ -69,7 +69,6 @@ $ esahub [cmd] [args] ...
 | `--id`           | <code>&lt;ID&gt;</code>       | `ls`, `get`    | product identifier, may include wildcards (`*`), e.g. `*SDV*`
 | `-q`, `--query`  | <code>&lt;QUERY&gt;</code>    | `ls`, `get`    | custom query for SciHub, e.g. for single archive: `identifier:...`
 | -----
-| `-N`, `--nproc`  | <code>&lt;N&gt;</code>        | all           | number of parallel processes/downloads (defaults to config `GENERAL.N_PROC` and `GENERAL.N_DOWNLOADS`)
 | `--log`          |                               | all           | write log file
 | `--quiet`        |                               | all           | Suppress terminal output
 | `--mode`         | <code>&lt;MODE&gt;</code>     | `doctor`      | <code>zip&#124;file</code>

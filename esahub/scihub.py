@@ -70,10 +70,11 @@ class SessionManager():
         closer_tasks = []
         for server, session in self._sessions.items():
             closer_tasks.append(session.close())
-        loop.run_until_complete(asyncio.wait(closer_tasks))
+        if len(closer_tasks) > 0:
+            loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
-QUERY = SessionManager(concurrent=20)
+QUERY = SessionManager(concurrent=CONFIG['GENERAL']['N_SCIHUB_QUERIES'])
 DOWNLOAD = SessionManager()
 
 
@@ -766,7 +767,8 @@ async def _single_download(product, return_md5=False):
             # File exists and won't be checked.
             #
             msg = '{} Skipping existing - MD5 not checked'.format(file_name)
-            tty.screen[pbar_key] = 'Skipping {name}'
+            tty.screen[pbar_key] = (tty.warn('Skipping') + ': {name}',
+                                    tty.NOBAR)
             logger.debug(msg)
             b_download = False
 
@@ -777,8 +779,11 @@ async def _single_download(product, return_md5=False):
             local_md5 = checksum.md5(full_file_path)
             remote_md5 = await _md5(fdata)
             if local_md5 == remote_md5:
+                file_size = os.path.getsize(full_file_path)
                 msg = '{} Skipping download (MD5 okay)'.format(file_name)
-                tty.screen[pbar_key] = 'Skipping {name} (okay)'
+                tty.screen[pbar_key] = (tty.success('Exists') + ': {name}',
+                                        tty.NOBAR)
+                tty.screen.status(progress=file_size)
                 logger.debug(msg)
                 b_download = False
                 b_file_okay = True
@@ -808,7 +813,8 @@ async def _single_download(product, return_md5=False):
                 msg = '{} Download failed, trial {:d}/{:d}.'.format(
                         file_name, i+1, CONFIG['GENERAL']['TRIALS'])
                 logger.debug(msg)
-                tty.screen[pbar_key] = 'Failed: {name}'
+                tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
+                                        tty.NOBAR)
             else:
                 #
                 # Download completed.
@@ -824,21 +830,24 @@ async def _single_download(product, return_md5=False):
                     msg = '{} MD5 checksum failed, trial {:d}/{:d}.'.format(
                             file_name, i+1, CONFIG['GENERAL']['TRIALS'])
                     logger.debug(msg)
-                    tty.screen[pbar_key] = 'Failed: {name}'
+                    tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
+                                            tty.NOBAR)
                 else:
                     #
                     # Download completed and successful.
                     #
                     msg = '{} MD5 okay'.format(file_name)
                     logger.debug(msg)
-                    tty.screen[pbar_key] = 'MD5 okay: {name}'
+                    tty.screen[pbar_key] = (tty.success('MD5 okay') +
+                                            ': {name}', tty.NOBAR)
                     b_file_okay = True
                     break
 
         if not b_file_okay:
             msg = '{} Download failed.'.format(file_name)
             logger.warning(msg)
-            tty.screen[pbar_key] = 'Failed: {name}'
+            tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
+                                    tty.NOBAR)
 
     if CONFIG['GENERAL']['DOWNLOAD_PREVIEW']:
         full_preview_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'],
@@ -858,7 +867,8 @@ async def _single_download(product, return_md5=False):
         #
         msg = 'Download successful: {}'.format(full_file_path)
         logger.debug(msg)
-        tty.screen[pbar_key] = 'Successful: {name}'
+        tty.screen[pbar_key] = (tty.success('Successful') + ': {name}',
+                                tty.NOBAR)
         if return_md5:
             return full_file_path, local_md5
         else:
@@ -870,7 +880,8 @@ async def _single_download(product, return_md5=False):
         #
         msg = 'Download failed: {}'.format(file_name)
         logger.error(msg)
-        tty.screen[pbar_key] = 'Failed: {name}'
+        tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
+                                tty.NOBAR)
         return False
 
     else:

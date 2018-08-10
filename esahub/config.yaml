@@ -43,11 +43,7 @@ GENERAL:
   # Number of entries fetched from the server per request
   ENTRIES: 100
   # Number of simultaneous queries to SciHub (ls command)
-  N_SCIHUB_QUERIES: 50
-  # Default number of simultaneous downloads
-  N_DOWNLOADS: 2
-  # The number of processes for parallel operations. Currently only used in main.doctor
-  N_PROC: 4
+  N_SCIHUB_QUERIES: 20
 
   # -------------------------------------------------------------------------------------------- #
   # Specify default query parameters here.

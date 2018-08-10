@@ -60,8 +60,6 @@ def parse_cli_options(args=None):
     # ARGUMENTS FOR ALL COMMANDS
     # -------------------------------------------------------------------------
     for p in (parser_get, parser_ls, parser_doctor):
-        p.add_argument('-N', '--nproc', type=int,
-                       help='Number of simultaneous processes/downloads.')
         p.add_argument('--quiet', action='store_true',
                        help='Suppress terminal output.')
         p.add_argument('--log', action='store_true',
@@ -170,9 +168,6 @@ def set_config(args):
         CONFIG['GENERAL']['CHECK_MODE'] = args['mode']
     if not_none(args, 'force'):
         CONFIG['GENERAL']['SKIP_EXISTING'] = not args['force']
-    if not_none(args, 'nproc'):
-        CONFIG['GENERAL']['N_DOWNLOADS'] = \
-            CONFIG['GENERAL']['N_PROC'] = args['nproc']
     if not_none(args, 'quiet'):
         CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
@@ -213,7 +208,7 @@ def set_config(args):
 def interrupt():
     msg = 'Execution interrupted manually.'
     logger.warning(msg)
-    tty.screen.result(msg)
+    tty.screen.result(tty.error(msg))
     shutdown()
     sys.exit()
 
