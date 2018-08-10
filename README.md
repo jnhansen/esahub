@@ -4,19 +4,9 @@
 # esahub: Downloading data from ESA scihub
 Author: Johannes Hansen (johannes.hansen@ed.ac.uk)
 
-## <a name="setup"></a>Setup
-Install `esahub`:
-```
-$ pip install esahub
-```
+esahub provides a simple interface for downloading data from the European Sentinel missions.
 
-This will also create a YAML configuration file in `~/.esahub.conf` (unless that file exists) by
-copying `config.yaml`. The configuration settings in `~/.esahub.conf` have precedence over the settings
-in `config.yaml`.
-
-You should overwrite the required settings in your `~/.esahub.conf`, especially:
-* `GENERAL.DATA_DIR`
-
+It allows multiple downloads to be performed in parallel, from multiple data servers.
 The full range of Copernicus data servers are supported, including:
 * `https://scihub.copernicus.eu/dhus`
 * `https://scihub.copernicus.eu/apihub`
@@ -26,8 +16,19 @@ The full range of Copernicus data servers are supported, including:
 * `https://colhub.copernicus.eu/dhus`
 * `https://colhub2.copernicus.eu/dhus`
 
-For the majority of these you will need to provide your own authentication details
-in `SERVERS`.
+
+## <a name="setup"></a>Setup
+Install `esahub`:
+```
+$ pip install esahub
+```
+
+This will also create a YAML configuration file in `~/.esahub.conf` (unless that file exists) by copying `config.yaml`. The configuration settings in `~/.esahub.conf` have precedence over the settings in `config.yaml`.
+
+You should overwrite the required settings in your `~/.esahub.conf`, especially:
+* `GENERAL.DATA_DIR`
+
+For the majority of the data servers you will need to provide your own authentication details in `SERVERS`.
 
 
 ## <a name="test"></a>Testing the installation

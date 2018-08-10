@@ -35,7 +35,7 @@ def eprint(*args, **kwargs):
 # -----------------------------------------------------------------------------
 # Datetime parsing and formatting
 # -----------------------------------------------------------------------------
-def parse_datetime(value, dayfirst=True, force=None):
+def parse_datetime(value, dayfirst=False, force=None):
     """
     Parse a date time string.
 
@@ -60,7 +60,7 @@ def parse_datetime(value, dayfirst=True, force=None):
         if start == parsed[1]:
             # All attributes have been provided,
             # i.e. an exact date has been passed.
-            return start
+            return (start, start)
 
         # Determine which attributes have actually been specified.
         attrs = ['year', 'month', 'day', 'hour', 'minute', 'second']
@@ -78,16 +78,21 @@ def parse_datetime(value, dayfirst=True, force=None):
         elif given_attrs == set(['year', 'month', 'day', 'hour']):
             end = start + relativedelta(hours=1)
         else:
-            return start
+            return (start, start)
 
         return (start, end)
 
     splitters = ['to', '-', ',']
     try:
         stripped = value.strip()
+        # Check for open ended date range:
         for s in splitters:
-            if stripped.startswith(s) or stripped.endswith(s):
-                raise ValueError("This is a date range.")
+            if stripped.startswith(s):
+                parsed = _parse_single_value(stripped.lstrip(s))
+                return (None, parsed[1])
+            elif stripped.endswith(s):
+                parsed = _parse_single_value(stripped.rstrip(s))
+                return (parsed[0], None)
         # Treat as single date
         parsed = _parse_single_value(value)
         return parsed
@@ -107,10 +112,8 @@ def parse_datetime(value, dayfirst=True, force=None):
                 parts = [_.strip() for _ in parts]
                 start, end = [_parse_single_value(_) if bool(_) else None
                               for _ in parts]
-                if isinstance(start, tuple):
-                    start = start[0]
-                if isinstance(end, tuple):
-                    end = end[1]
+                start = start[0]
+                end = end[1]
                 return start, end
 
     raise ValueError("Could not parse as datetime: %s" % value)
