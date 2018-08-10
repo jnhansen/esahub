@@ -2,9 +2,7 @@
 [![PyPI version](https://badge.fury.io/py/esahub.svg)](https://badge.fury.io/py/esahub)
 
 # esahub: Downloading data from ESA scihub
-Author: Johannes Hansen (johannes.hansen@ed.ac.uk)
-
-esahub provides a simple interface for downloading data from the European Sentinel missions.
+`esahub` provides a simple interface for downloading satellite data from the European Sentinel missions.
 
 It allows multiple downloads to be performed in parallel, from multiple data servers.
 The full range of Copernicus data servers are supported, including:
