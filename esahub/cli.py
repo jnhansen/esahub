@@ -11,7 +11,6 @@ import time
 import logging
 import datetime
 from .config import CONFIG
-from . import tty
 
 
 locale.setlocale(locale.LC_ALL, '')
@@ -205,18 +204,6 @@ def set_config(args):
 
 
 # -----------------------------------------------------------------------------
-def interrupt():
-    msg = 'Execution interrupted manually.'
-    logger.warning(msg)
-    tty.screen.result(tty.error(msg))
-    shutdown()
-    sys.exit()
-
-
-def shutdown():
-    del tty.screen
-
-
 def cli_main():
     """ Execute selected command. """
     args = parse_cli_options()
@@ -251,7 +238,17 @@ def cli_main():
     #
     # These modules MUST be imported AFTER altering the CONFIG.
     #
-    from . import main
+    from . import tty, main
+
+    def shutdown():
+        del tty.screen
+
+    def interrupt():
+        msg = 'Execution interrupted manually.'
+        logger.warning(msg)
+        tty.screen.result(tty.error(msg))
+        shutdown()
+        sys.exit()
 
     try:
         a = time.time()
