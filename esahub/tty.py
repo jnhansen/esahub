@@ -5,6 +5,9 @@ from tqdm import tqdm
 from tqdm._utils import _environ_cols_wrapper
 
 
+tqdm.monitor_interval = 1
+
+
 def TERM_WIDTH():
     if sys.stdout.isatty():
         return _environ_cols_wrapper()(sys.stdout)
@@ -134,7 +137,7 @@ class Screen():
                 desc=_format_desc('Downloading {name}', key),
                 unit='B', unit_scale=True,
                 bar_format=BAR,
-                mininterval=0.3,
+                mininterval=0.3, maxinterval=1,
                 disable=CONFIG['GENERAL']['QUIET'],
                 position=len(self._lines) + 1,
                 leave=True
