@@ -213,7 +213,7 @@ def set_config(args):
 def interrupt():
     msg = 'Execution interrupted manually.'
     logger.warning(msg)
-    tty.screen.result(msg)
+    tty.screen.result(tty.error(msg))
     shutdown()
     sys.exit()
 

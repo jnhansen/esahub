@@ -1,17 +1,27 @@
 from .config import CONFIG
 import sys
+import re
 from tqdm import tqdm
+from tqdm._utils import _environ_cols_wrapper
 
-BAR_FORMAT = "{desc} {percentage:3.0f}% |{bar}| " \
-             "{n_fmt: >5}/{total_fmt: <5} " \
-             "[{elapsed}, {rate_fmt: >8}{postfix}]"
-NOBAR_FORMAT = "{desc}"
-STATUS_RATE_FORMAT = "{desc} {n_fmt} [{elapsed}, {rate_fmt}]"
-STATUS_BAR_FORMAT = "{desc} {percentage:3.0f}% |{bar}| [{elapsed}]"
-STATUS_NOBAR_FORMAT = "{desc} [{elapsed}]"
+
+def TERM_WIDTH():
+    return _environ_cols_wrapper()(sys.stdout)
+
+
+BAR = "{desc} {percentage:3.0f}% |{bar}| " \
+      "{n_fmt: >5}/{total_fmt: <5} " \
+      "[{elapsed}, {rate_fmt: >8}{postfix}]"
+# The explicit width is necessary because tqdm doesn't handle color codes
+# correctly.
+NOBAR = "{desc: <%d}" % TERM_WIDTH()
+STATUS_RATE = "{desc} {n_fmt} [{elapsed}, {rate_fmt}]"
+STATUS_BAR = "{desc} {percentage:3.0f}% |{bar}| [{elapsed}]"
+STATUS_NOBAR = "{desc} [{elapsed}]"
 DESC_LEN = 50
 LONG_DESC_LEN = 80
 FAKE_TOTAL = 9000000000000
+RE_ANSI = re.compile(r"\x1b\[[;\d]*[A-Za-z]")
 
 
 def shorten(text, maxlen=30):
@@ -24,7 +34,9 @@ def shorten(text, maxlen=30):
 
 
 def _format_desc(desc, key, long=False):
-    current_len = len(desc)
+    # Strip away color control codes for length calculation:
+    _stripped = RE_ANSI.sub('', desc)
+    current_len = len(_stripped)
     if '{name}' in desc:
         current_len -= len('{name}')
     if long:
@@ -46,15 +58,15 @@ class Screen():
     def status(self, desc=None, mode=None, total=None, progress=None,
                reset=False, unit=None, scale=None):
         if mode is None:
-            bar_format = STATUS_NOBAR_FORMAT
+            bar_format = STATUS_NOBAR
         elif mode == 'rate':
-            bar_format = STATUS_RATE_FORMAT
+            bar_format = STATUS_RATE
         elif mode == 'bar':
-            bar_format = STATUS_BAR_FORMAT
+            bar_format = STATUS_BAR
         elif mode == 'static':
-            bar_format = STATUS_NOBAR_FORMAT
+            bar_format = STATUS_NOBAR
         else:
-            bar_format = STATUS_NOBAR_FORMAT
+            bar_format = STATUS_NOBAR
         if self._status is None:
             #
             # Initialize new status bar.
@@ -103,7 +115,7 @@ class Screen():
             self._result = tqdm(disable=CONFIG['GENERAL']['QUIET'],
                                 total=FAKE_TOTAL,
                                 desc=text,
-                                bar_format=NOBAR_FORMAT,
+                                bar_format=NOBAR,
                                 position=len(self._lines) + 1,
                                 leave=True)
         else:
@@ -116,7 +128,7 @@ class Screen():
             self._lines[key] = tqdm(
                 desc=_format_desc('Downloading {name}', key),
                 unit='B', unit_scale=True,
-                bar_format=BAR_FORMAT,
+                bar_format=BAR,
                 mininterval=0.3,
                 disable=CONFIG['GENERAL']['QUIET'],
                 position=len(self._lines) + 1,
@@ -127,6 +139,11 @@ class Screen():
 
     def __setitem__(self, key, value):
         pbar = self.__getitem__(key)
+        if isinstance(value, tuple):
+            value, fmt = value
+            pbar.bar_format = fmt
+            if pbar.total is None:
+                pbar.total = FAKE_TOTAL
         pbar.desc = _format_desc(value, key)
         pbar.refresh()
 
@@ -154,34 +171,36 @@ screen = Screen()
 
 # TERMINAL OUTPUT FORMATTING
 # -----------------------------------------------------------------------------
-PURPLE = '\033[95m'
-CYAN = '\033[96m'
-DARKCYAN = '\033[36m'
-BLUE = '\033[94m'
-GREEN = '\033[92m'
-YELLOW = '\033[93m'
-RED = '\033[91m'
-BOLD = '\033[1m'
-UNDERLINE = '\033[4m'
-END = '\033[0m'
+ANSI = dict(
+    PURPLE='\033[95m',
+    CYAN='\033[96m',
+    DARKCYAN='\033[36m',
+    BLUE='\033[94m',
+    GREEN='\033[92m',
+    YELLOW='\033[93m',
+    RED='\033[91m',
+    BOLD='\033[1m',
+    UNDERLINE='\033[4m',
+    END='\033[0m'
+)
 
 
 def error(message):
-    if False and sys.stdout.isatty():
-        return '{0}{1}{2}{3}'.format(BOLD, RED, message, END)
+    if sys.stdout.isatty():
+        return '{BOLD}{RED}{text}{END}'.format(text=message, **ANSI)
     else:
         return message
 
 
 def warn(message):
-    if False and sys.stdout.isatty():
-        return '{0}{1}{2}{3}'.format(BOLD, YELLOW, message, END)
+    if sys.stdout.isatty():
+        return '{BOLD}{YELLOW}{text}{END}'.format(text=message, **ANSI)
     else:
         return message
 
 
 def success(message):
-    if False and sys.stdout.isatty():
-        return '{0}{1}{2}{3}'.format(BOLD, GREEN, message, END)
+    if sys.stdout.isatty():
+        return '{BOLD}{GREEN}{text}{END}'.format(text=message, **ANSI)
     else:
         return message
