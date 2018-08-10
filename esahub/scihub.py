@@ -74,7 +74,7 @@ class SessionManager():
             loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
-QUERY = SessionManager(concurrent=20)
+QUERY = SessionManager(concurrent=CONFIG['GENERAL']['N_SCIHUB_QUERIES'])
 DOWNLOAD = SessionManager()
 
 

@@ -171,8 +171,7 @@ def set_config(args):
     if not_none(args, 'force'):
         CONFIG['GENERAL']['SKIP_EXISTING'] = not args['force']
     if not_none(args, 'nproc'):
-        CONFIG['GENERAL']['N_DOWNLOADS'] = \
-            CONFIG['GENERAL']['N_PROC'] = args['nproc']
+        CONFIG['GENERAL']['N_PROC'] = args['nproc']
     if not_none(args, 'quiet'):
         CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
