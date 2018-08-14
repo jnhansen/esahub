@@ -55,7 +55,7 @@ $ esahub [cmd] [args] ...
 
 | Option           | Argument                      | Available for | Description
 |:-----------------|:------------------------------|:--------------|:------------------
-| <td colspan=1><code>&lt;SAT&gt;</code></td>      | all           | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
+|                  | <code>&lt;SAT&gt;</code>      | all           | Satellite to query, e.g. S1A, S1B, S2A, S2B, S3A
 | `-d`, `--dir`    | <code>&lt;DIR&gt;</code>      | all           | raw data directory (defaults to config `GENERAL.DATA_DIR`)
 | `-o`, `--out`    | <code>&lt;FILE&gt;</code>     | `ls`          | write files to JSON
 | `-i`, `--in`     | <code>&lt;FILE&gt;</code>     | `get`         | read files from JSON
