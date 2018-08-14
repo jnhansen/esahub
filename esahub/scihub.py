@@ -774,10 +774,7 @@ async def _single_download(product, return_md5=False, cont=True):
     #
     # Check if file already exists in location:
     #
-    if os.path.exists(download_path) and os.path.isfile(download_path):
-
-        # Create progress bar
-        # pbar = tty.screen[pbar_key]
+    if os.path.exists(full_file_path) and os.path.isfile(full_file_path):
 
         if not CONFIG['GENERAL']['CHECK_EXISTING']:
             #
@@ -793,10 +790,10 @@ async def _single_download(product, return_md5=False, cont=True):
             #
             # File exists and will be checked for md5 consistency
             #
-            local_md5 = checksum.md5(download_path)
+            local_md5 = checksum.md5(full_file_path)
             remote_md5 = await _md5(fdata)
             if local_md5 == remote_md5:
-                file_size = os.path.getsize(download_path)
+                file_size = os.path.getsize(full_file_path)
                 msg = '{} Skipping download (MD5 okay)'.format(file_name)
                 tty.screen[pbar_key] = (tty.success('Exists') + ': {name}',
                                         tty.NOBAR)
@@ -804,10 +801,6 @@ async def _single_download(product, return_md5=False, cont=True):
                 logger.debug(msg)
                 b_download = False
                 b_file_okay = True
-
-            elif cont:
-                # Continue download
-                b_download = True
 
             else:
                 msg = '{} MD5 wrong: redownloading ...'.format(file_name)
