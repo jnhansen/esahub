@@ -122,10 +122,10 @@ def parse_cli_options(args=None):
     # -------------------------------------------------------------------------
     for p in (parser_get,):
         p.add_argument(
-            '--force', action='store_true',
-            help='Force download even if index existing.')
-        p.add_argument(
             '-i', '--in', help='Read download list from file.')
+        p.add_argument(
+            '--restart', action='store_true',
+            help='Force restart of incomplete downloads (do not continue).')
 
     # ARGUMENTS FOR LS ONLY
     # -------------------------------------------------------------------------
@@ -201,6 +201,8 @@ def set_config(args):
         CONFIG['GENERAL']['IN_FILE'] = args['in']
     if not_none(args, 'out'):
         CONFIG['GENERAL']['OUT_FILE'] = args['out']
+    if not_none(args, 'restart') and args['restart']:
+        CONFIG['GENERAL']['CONTINUE'] = False
 
 
 # -----------------------------------------------------------------------------
