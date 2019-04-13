@@ -12,10 +12,14 @@ CONFIG = {}
 # Settings files in order of increasing precedence
 #
 def load(fname):
+    try:
+        loader = yaml.FullLoader
+    except AttributeError:
+        loader = yaml.Loader
     fname = os.path.expanduser(fname)
     if os.path.isfile(fname):
         with open(fname, 'r') as fid:
-            CONFIG.update(yaml.load(fid))
+            CONFIG.update(yaml.load(fid, Loader=loader))
     CONFIG['GENERAL']['DATA_DIR'] = \
         os.path.expanduser(CONFIG['GENERAL']['DATA_DIR'])
 

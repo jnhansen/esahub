@@ -273,7 +273,7 @@ async def _get_file_list_from_url(url, limit=None, verbose=False):
     # Parse first page to get total number of results.
     total_results = await get_total_results(url)
     host = urlparse(url).netloc
-    if verbose:
+    if verbose and total_results > 0:
         tty.screen.status(desc='Querying {host}'.format(host=host),
                           total=total_results, mode='bar')
 
