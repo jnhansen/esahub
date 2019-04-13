@@ -172,7 +172,9 @@ async def _download(url, destination, return_md5=False, cont=True):
         # Create progress bar only now:
         pbar = tty.screen[pbar_key]
         pbar.n = local_size
-        pbar.total = size + local_size
+        total = size + local_size
+        if total > 0:
+            pbar.total = total
         pbar.refresh()
 
         mode = 'ab' if cont else 'wb'

@@ -77,7 +77,7 @@ class Screen():
             #
             # Initialize new status bar.
             #
-            if total is None:
+            if total is None or total == 0:
                 total = FAKE_TOTAL
             if progress is None:
                 progress = 0
@@ -102,10 +102,12 @@ class Screen():
                 self._status.set_description_str(desc)
             if mode is not None:
                 self._status.bar_format = bar_format
-            if total is not None:
+            if total is not None and total != 0:
                 self._status.total = total
             if progress is not None:
-                self._status.update(progress)
+                # Make sure not to exceed total
+                progress = min(progress, self._status.total)
+                self._status.n = progress
             if reset:
                 self._status.n = 0
             if unit is not None:
@@ -134,6 +136,7 @@ class Screen():
     def __getitem__(self, key):
         if key not in self._lines:
             self._lines[key] = tqdm(
+                total=FAKE_TOTAL,
                 desc=_format_desc('Downloading {name}', key),
                 unit='B', unit_scale=True,
                 bar_format=BAR,
