@@ -768,6 +768,7 @@ async def _single_download(product, return_md5=False, cont=True):
 
     b_download = True
     b_file_okay = False
+    b_file_exists = False
     complete = False
 
     full_file_path = os.path.join(CONFIG['GENERAL']['DATA_DIR'], file_name)
@@ -786,6 +787,7 @@ async def _single_download(product, return_md5=False, cont=True):
             tty.screen[pbar_key] = (tty.warn('Skipping') + ': {name}',
                                     tty.NOBAR)
             logger.debug(msg)
+            b_file_exists = True
             b_download = False
 
         else:
@@ -801,6 +803,7 @@ async def _single_download(product, return_md5=False, cont=True):
                                         tty.NOBAR)
                 tty.screen.status(progress=file_size)
                 logger.debug(msg)
+                b_file_exists = True
                 b_download = False
                 b_file_okay = True
 
@@ -881,7 +884,9 @@ async def _single_download(product, return_md5=False, cont=True):
         # File has been downloaded successfully OR already exists
         # --> Return the file path
         #
-        os.rename(download_path, full_file_path)
+        if not b_file_exists:
+            os.rename(download_path, full_file_path)
+
         msg = 'Download successful: {}'.format(full_file_path)
         logger.debug(msg)
         tty.screen[pbar_key] = (tty.success('Successful') + ': {name}',
