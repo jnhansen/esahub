@@ -9,6 +9,7 @@ import os
 import json
 import asyncio
 from .config import CONFIG
+from .error import ArgumentError
 from . import scihub, check, tty, utils
 
 logger = logging.getLogger('esahub')
@@ -31,6 +32,9 @@ def list_local_archives():
 def query_file_list(query=None, limit=None):
     if 'IN_FILE' in CONFIG['GENERAL'] and \
             CONFIG['GENERAL']['IN_FILE'] is not None:
+        if not os.path.isfile(CONFIG['GENERAL']['IN_FILE']):
+            raise ArgumentError('File {} does not exist.'.format(
+                CONFIG['GENERAL']['IN_FILE']))
         with open(CONFIG['GENERAL']['IN_FILE'], 'r') as f:
             file_list = json.load(f)
     else:

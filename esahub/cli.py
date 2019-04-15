@@ -12,6 +12,7 @@ import time
 import logging
 import datetime
 from .config import CONFIG
+from .error import ArgumentError
 
 
 locale.setlocale(locale.LC_ALL, '')
@@ -273,6 +274,9 @@ def cli_main():
 
     except KeyboardInterrupt:
         interrupt()
+
+    except ArgumentError as e:
+        print(e)
 
     finally:
         b = time.time()
