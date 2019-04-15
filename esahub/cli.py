@@ -3,6 +3,7 @@
 """ This is the command line tool for the esahub python package.
 """
 from __future__ import print_function
+import os
 import locale
 import warnings
 import sys
@@ -218,6 +219,8 @@ def cli_main():
         time=datetime.datetime.strftime(datetime.datetime.now(),
                                         '%Y-%m-%d_%H-%M-%S')
     )
+    CONFIG['GENERAL']['LOG_FILE'] = os.path.expanduser(
+        CONFIG['GENERAL']['LOG_FILE'])
     CONFIG['GENERAL']['EMAIL_SUBJECT'] = \
         CONFIG['GENERAL']['EMAIL_SUBJECT'].format(cmd=cmd)
 
