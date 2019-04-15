@@ -160,7 +160,11 @@ async def _download(url, destination, return_md5=False, cont=True):
         local_size = os.path.getsize(destination)
         headers['Range'] = 'bytes={}-'.format(local_size)
         with open(destination, 'rb') as f:
-            hash_md5.update(f.read())
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    break
+                hash_md5.update(chunk)
         tty.screen.status(progress=local_size)
     else:
         local_size = 0
