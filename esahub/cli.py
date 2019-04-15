@@ -228,6 +228,10 @@ def cli_main():
         CONFIG['GENERAL']['LOGGING'] = True
 
     if CONFIG['GENERAL']['LOGGING'] or args['debug']:
+        # Create logfile directory
+        log_file_path = os.path.split(CONFIG['GENERAL']['LOG_FILE'])[0]
+        os.makedirs(log_file_path, exist_ok=True)
+
         logging.basicConfig(
             filename=CONFIG['GENERAL']['LOG_FILE'],
             format='[%(asctime)s] %(levelname)s - %(message)s',
