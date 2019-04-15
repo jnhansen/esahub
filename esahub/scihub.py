@@ -67,11 +67,11 @@ class SessionManager():
 
     def __del__(self):
         # Close all active sessions
-        loop = asyncio.get_event_loop()
-        closer_tasks = []
-        for server, session in self._sessions.items():
-            closer_tasks.append(session.close())
-        if len(closer_tasks) > 0:
+        if len(self._sessions) > 0:
+            loop = asyncio.get_event_loop()
+            closer_tasks = []
+            for server, session in self._sessions.items():
+                closer_tasks.append(session.close())
             loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
