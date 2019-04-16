@@ -12,8 +12,6 @@ from collections import OrderedDict
 import hashlib
 import logging
 logger = logging.getLogger('esahub')
-logger.disabled = True
-
 
 CHUNK = 64 * 1024
 PREFIXES = {
@@ -172,6 +170,7 @@ async def _download(url, destination, return_md5=False, cont=True):
     server = _get_server_from_url(url)
     async with DOWNLOAD[server].get(url, timeout=None, headers=headers) \
             as response:
+        logger.debug('Downloading {}, status {}'.format(url, response.status))
         size = int(response.headers['Content-Length'])
         # Create progress bar only now:
         pbar = tty.screen[pbar_key]

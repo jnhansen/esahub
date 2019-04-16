@@ -210,6 +210,8 @@ def set_config(args):
 # -----------------------------------------------------------------------------
 def cli_main():
     """ Execute selected command. """
+    global logger
+
     args = parse_cli_options()
     set_config(args)
     cmd = args['cmd']
@@ -233,12 +235,14 @@ def cli_main():
         log_file_path = os.path.split(CONFIG['GENERAL']['LOG_FILE'])[0]
         os.makedirs(log_file_path, exist_ok=True)
 
-        logging.basicConfig(
-            filename=CONFIG['GENERAL']['LOG_FILE'],
-            format='[%(asctime)s] %(levelname)s - %(message)s',
-            datefmt='%m/%d/%Y %H:%M:%S',
-            level=logging.DEBUG if args['debug'] else logging.INFO
+        logger.setLevel(logging.DEBUG if args['debug'] else logging.INFO)
+        fh = logging.FileHandler(CONFIG['GENERAL']['LOG_FILE'])
+        fmt = logging.Formatter(
+            '[%(asctime)s] %(levelname)-8s %(message)s',
+            datefmt='%m/%d/%Y %H:%M:%S'
         )
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
     else:
         logging.disable(logging.CRITICAL)
 
@@ -276,6 +280,7 @@ def cli_main():
         interrupt()
 
     except ArgumentError as e:
+        logger.error(e)
         print(e)
 
     finally:

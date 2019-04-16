@@ -67,7 +67,7 @@ def get(query=None, limit=None):
         utils.b2h(size),
         CONFIG['GENERAL']['DATA_DIR']
     )
-    logging.info(msg)
+    logger.info(msg)
     tty.screen.status(desc=msg, total=size, mode='bar', reset=True,
                       unit='B', scale=True)
 
@@ -94,12 +94,12 @@ def ls(query=None, quiet=False):
     if not quiet:
         msg = 'Found {0:d} files ({1}).'.format(len(file_list),
                                                 utils.b2h(size))
-        logging.info(msg)
+        logger.info(msg)
         tty.screen.result(msg)
         for f in file_list:
             msg = '{:>8} {}'.format(utils.b2h(f['size']), f['filename'])
             # tty.update(f['filename'],msg)
-            logging.info(f['filename'])
+            logger.info(f['filename'])
 
     #
     # Write file_list to JSON file
@@ -127,7 +127,7 @@ def doctor(delete=False, repair=False):
     all_files = list_local_archives()
     msg = 'Checking {:d} files for consistency (mode: {}).'.format(
             len(all_files), CONFIG['GENERAL']['CHECK_MODE'])
-    logging.info(msg)
+    logger.info(msg)
 
     tty.screen.status(desc=msg, reset=True, mode='bar', total=len(all_files),
                       unit='', scale=False)
@@ -146,7 +146,7 @@ def doctor(delete=False, repair=False):
     n_bad_files = len(bad_files)
     msg = '{0:d}/{1:d} files corrupt.'.format(
         n_bad_files, len(all_files))
-    logging.info(msg)
+    logger.info(msg)
     tty.screen.result(msg)
 
     if repair:
@@ -170,7 +170,7 @@ def doctor(delete=False, repair=False):
             # tty.screen.status(progress=1)
 
         msg = 'Deleted {} corrupt files!'.format(n_bad_files)
-        logging.info(msg)
+        logger.info(msg)
         tty.screen.result(msg)
 
     return result
