@@ -10,6 +10,7 @@ from . import utils, geo, checksum, tty
 from urllib.parse import urlparse, parse_qs, urlencode
 from collections import OrderedDict
 import hashlib
+import random
 import logging
 logger = logging.getLogger('esahub')
 
@@ -52,24 +53,50 @@ class SessionManager():
     def __getitem__(self, server):
         if server not in self._sessions:
             cfg = CONFIG['SERVERS'][server]
-            auth = aiohttp.BasicAuth(login=cfg['user'],
-                                     password=cfg['password'])
             if self._concurrent is None:
                 concurrent = cfg['downloads']
             else:
                 concurrent = self._concurrent
-            connector = aiohttp.TCPConnector(limit=concurrent)
-            self._sessions[server] = aiohttp.ClientSession(
-                auth=auth, connector=connector)
-        return self._sessions[server]
+
+            # Allow multiple accounts per server:
+            if isinstance(cfg['user'], list):
+                self._sessions[server] = []
+                for user, password in zip(cfg['user'], cfg['password']):
+                    auth = aiohttp.BasicAuth(login=user, password=password)
+                    connector = aiohttp.TCPConnector(limit=concurrent,
+                                                     use_dns_cache=False,
+                                                     force_close=True)
+                    self._sessions[server].append(
+                        aiohttp.ClientSession(auth=auth, connector=connector)
+                    )
+            else:
+                auth = aiohttp.BasicAuth(login=cfg['user'],
+                                         password=cfg['password'])
+                connector = aiohttp.TCPConnector(limit=concurrent,
+                                                 use_dns_cache=False,
+                                                 force_close=True)
+                self._sessions[server] = aiohttp.ClientSession(
+                    auth=auth, connector=connector)
+
+        # If there are multiple sessions for the server (multiple accounts),
+        # pick one of them.
+        if isinstance(self._sessions[server], list):
+            i = random.randint(0, len(self._sessions[server]) - 1)
+            return self._sessions[server][i]
+        else:
+            return self._sessions[server]
 
     def __del__(self):
-        # Close all active sessions
+        # Close all active sessions, if any
         if len(self._sessions) > 0:
             loop = asyncio.get_event_loop()
             closer_tasks = []
             for server, session in self._sessions.items():
-                closer_tasks.append(session.close())
+                if isinstance(session, list):
+                    for session_inst in session:
+                        closer_tasks.append(session_inst.close())
+                else:
+                    closer_tasks.append(session.close())
             loop.run_until_complete(asyncio.wait(closer_tasks))
 
 
@@ -168,11 +195,27 @@ async def _download(url, destination, return_md5=False, cont=True):
         local_size = 0
 
     server = _get_server_from_url(url)
-    async with DOWNLOAD[server].get(url, timeout=None, headers=headers) \
+    session = DOWNLOAD[server]
+    async with session.get(url, timeout=None, headers=headers) \
             as response:
-        logger.debug('Downloading {}, status {}'.format(url, response.status))
+        logger.debug('Downloading {} ({}), status {}'.format(
+            url, session._default_auth.login, response.status))
+
+        # Status should be 200 (for normal requests)
+        # or 206 (for range requests, i.e. continued downloads)
+        if response.status not in [200, 206]:
+            if response.status < 200 or response.status > 299:
+                # Log error message
+                msg = await response.text()
+                logger.warn(msg)
+            if return_md5:
+                return (False, None)
+            else:
+                return False
+
         size = int(response.headers['Content-Length'])
         # Create progress bar only now:
+        tty.screen[pbar_key] = ('Downloading {name}', tty.BAR)
         pbar = tty.screen[pbar_key]
         pbar.n = local_size
         total = size + local_size
@@ -835,8 +878,15 @@ async def _single_download(product, return_md5=False, cont=True):
                 msg = '{} Download failed, trial {:d}/{:d}.'.format(
                         file_name, i+1, CONFIG['GENERAL']['TRIALS'])
                 logger.debug(msg)
-                tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
-                                        tty.NOBAR)
+                if i+1 < CONFIG['GENERAL']['TRIALS']:
+                    # tty.screen[pbar_key] = (
+                    #     tty.warn('Retrying') + ': {name}', tty.NOBAR)
+                    # Wait before reconnecting.
+                    await asyncio.sleep(CONFIG['GENERAL']['RECONNECT_TIME'])
+                else:
+                    tty.screen[pbar_key] = (tty.error('Failed') + ': {name}',
+                                            tty.NOBAR)
+
             else:
                 #
                 # Download completed.
