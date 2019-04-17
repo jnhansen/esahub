@@ -26,8 +26,16 @@ STATUS_BAR = "{desc} {percentage:3.0f}% |{bar}| [{elapsed}]"
 STATUS_NOBAR = "{desc} [{elapsed}]"
 DESC_LEN = 50
 LONG_DESC_LEN = 80
+MAX_WIDTH = 120
 FAKE_TOTAL = 9000000000000
 RE_ANSI = re.compile(r"\x1b\[[;\d]*[A-Za-z]")
+
+
+def NCOLS():
+    if TERM_WIDTH() > MAX_WIDTH:
+        return MAX_WIDTH
+    else:
+        return None
 
 
 def shorten(text, maxlen=30):
@@ -92,7 +100,8 @@ class Screen():
                                 unit=unit, unit_scale=scale,
                                 mininterval=1, maxinterval=1,
                                 position=0,
-                                leave=True)
+                                leave=True,
+                                ncols=NCOLS())
 
         else:
             #
@@ -129,7 +138,8 @@ class Screen():
                                 desc=text,
                                 bar_format=NOBAR,
                                 position=len(self._lines) + 1,
-                                leave=True)
+                                leave=True,
+                                ncols=NCOLS())
         else:
             self._result.set_description_str(text)
 
@@ -143,7 +153,8 @@ class Screen():
                 mininterval=0.3, maxinterval=1,
                 disable=CONFIG['GENERAL']['QUIET'],
                 position=len(self._lines) + 1,
-                leave=True
+                leave=True,
+                ncols=NCOLS()
             )
 
         return self._lines[key]
