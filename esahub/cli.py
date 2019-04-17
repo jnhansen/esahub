@@ -172,7 +172,7 @@ def set_config(args):
     if not_none(args, 'quiet'):
         CONFIG['GENERAL']['QUIET'] = args['quiet']
     if not_none(args, 'dir'):
-        CONFIG['GENERAL']['DAT_DIR'] = args['dir']
+        CONFIG['GENERAL']['DATA_DIR'] = args['dir']
     if not_none(args, 'email'):
         CONFIG['GENERAL']['SEND_EMAIL'] = args['email']
     if not_none(args, 'log'):
